@@ -4,1221 +4,268 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Meine Campingplätze</title>
-
-<!-- Leaflet.js für OpenStreetMap -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<!-- EXIF.js für GPS aus Fotos -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
-
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
-
   :root {
-    --forest:   #2d4a3e;
-    --moss:     #4a7c59;
-    --sage:     #8ab89a;
-    --cream:    #f5f0e8;
-    --paper:    #fffdf7;
-    --bark:     #7a5c3e;
-    --ember:    #d4603a;
-    --gold:     #e8b84b;
-    --night:    #1a2e25;
-    --smoke:    #c8c4b8;
-    --shadow:   rgba(26, 46, 37, 0.15);
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  html { height: 100%; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--cream);
-    color: var(--night);
-    height: 100vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* ── Header ── */
-  header {
-    background: var(--forest);
-    color: var(--cream);
-    padding: 0 24px;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-    z-index: 1000;
-    box-shadow: 0 2px 12px var(--shadow);
-  }
-
-  .logo {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
-    letter-spacing: 0.02em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .logo span { font-size: 1.5rem; }
-
-  .header-actions {
-    display: flex;
-    gap: 8px;
-  }
-
-  .btn {
-    padding: 7px 14px;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 500;
-    transition: all 0.18s ease;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .btn-ghost {
-    background: transparent;
-    color: var(--sage);
-    border: 1px solid rgba(138,184,154,0.35);
-  }
-  .btn-ghost:hover { background: rgba(138,184,154,0.12); color: var(--cream); }
-
-  .btn-primary {
-    background: var(--ember);
-    color: white;
-  }
-  .btn-primary:hover { background: #c0522d; transform: translateY(-1px); }
-
-  /* ── Layout ── */
-  .app-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
-  }
-
-  /* ── Sidebar ── */
-  .sidebar {
-    width: 340px;
-    flex-shrink: 0;
-    background: var(--paper);
-    border-right: 1px solid rgba(122,92,62,0.15);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .sidebar-tabs {
-    display: flex;
-    border-bottom: 1px solid rgba(122,92,62,0.15);
-    flex-shrink: 0;
-  }
-
-  .tab-btn {
-    flex: 1;
-    padding: 12px 8px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: var(--smoke);
-    border-bottom: 2px solid transparent;
-    transition: all 0.18s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-  }
-  .tab-btn.active {
-    color: var(--forest);
-    border-bottom-color: var(--ember);
-  }
-  .tab-btn .count {
-    background: var(--sage);
-    color: white;
-    border-radius: 10px;
-    padding: 1px 6px;
-    font-size: 0.68rem;
-    font-weight: 600;
-  }
-  .tab-btn.active .count { background: var(--ember); }
-
-  .site-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .site-list::-webkit-scrollbar { width: 4px; }
-  .site-list::-webkit-scrollbar-thumb { background: var(--sage); border-radius: 2px; }
-
-  /* ── Filter Bar ── */
-  .filter-bar {
-    padding: 10px 12px;
-    border-bottom: 1px solid rgba(122,92,62,0.12);
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    flex-shrink: 0;
-    background: var(--paper);
-  }
-
-  .search-input-wrap {
-    position: relative;
-  }
-  .search-icon {
-    position: absolute;
-    left: 9px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.85rem;
-    pointer-events: none;
-  }
-  .search-input {
-    width: 100%;
-    padding: 7px 10px 7px 28px;
-    border: 1.5px solid #e0ddd5;
-    border-radius: 7px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.84rem;
-    background: white;
-    color: var(--night);
-    transition: border-color 0.15s;
-  }
-  .search-input:focus { outline: none; border-color: var(--moss); }
-  .search-input::placeholder { color: #bbb; }
-
-  .filter-row {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  .filter-select {
-    flex: 1;
-    min-width: 90px;
-    padding: 5px 8px;
-    border: 1.5px solid #e0ddd5;
-    border-radius: 7px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.78rem;
-    background: white;
-    color: var(--night);
-    cursor: pointer;
-    transition: border-color 0.15s;
-  }
-  .filter-select:focus { outline: none; border-color: var(--moss); }
-
-  .filter-chips {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-  }
-  .chip {
-    padding: 3px 9px;
-    border-radius: 12px;
-    border: 1.5px solid #e0ddd5;
-    background: white;
-    font-size: 0.73rem;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-    color: #888;
-    transition: all 0.15s;
-    white-space: nowrap;
-    user-select: none;
-  }
-  .chip:hover { border-color: var(--sage); color: var(--forest); }
-  .chip.active { background: var(--forest); border-color: var(--forest); color: white; }
-  .chip.revisit-chip.active { background: var(--ember); border-color: var(--ember); }
-  .chip.workation-chip.active { background: #3a5fd4; border-color: #3a5fd4; }
-
-  .filter-clear {
-    font-size: 0.72rem;
-    color: var(--smoke);
-    cursor: pointer;
-    background: none;
-    border: none;
-    font-family: 'DM Sans', sans-serif;
-    padding: 2px 4px;
-    border-radius: 4px;
-    align-self: center;
-    margin-left: auto;
-    flex-shrink: 0;
-  }
-  .filter-clear:hover { color: var(--ember); }
-
-  .filter-count {
-    font-size: 0.72rem;
-    color: var(--smoke);
-    padding: 2px 0;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--smoke);
-  }
-  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
-  .empty-state p { font-size: 0.85rem; line-height: 1.5; }
-
-  /* ── Camping Cards ── */
-  .camp-card {
-    background: white;
-    border-radius: 10px;
-    padding: 12px 14px;
-    cursor: pointer;
-    border: 1.5px solid transparent;
-    transition: all 0.18s;
-    box-shadow: 0 1px 4px var(--shadow);
-  }
-  .camp-card:hover { border-color: var(--sage); transform: translateX(2px); }
-  .camp-card.active { border-color: var(--ember); background: #fff9f6; }
-
-  .card-top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-  .card-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--night);
-    line-height: 1.3;
-  }
-  .card-actions {
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-  .icon-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 0.85rem;
-    padding: 2px 4px;
-    border-radius: 4px;
-    opacity: 0.5;
-    transition: opacity 0.15s;
-  }
-  .icon-btn:hover { opacity: 1; }
-
-  .card-meta {
-    font-size: 0.75rem;
-    color: var(--smoke);
-    margin-bottom: 6px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .card-meta span { display: flex; align-items: center; gap: 3px; }
-
-  .stars {
-    display: flex;
-    gap: 2px;
-    font-size: 0.85rem;
-  }
-  .star { color: #ddd; cursor: default; }
-  .star.filled { color: var(--gold); }
-
-  .card-note {
-    font-size: 0.78rem;
-    color: #888;
-    font-style: italic;
-    margin-top: 5px;
-    line-height: 1.4;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* ── Map ── */
-  #map {
-    flex: 1;
-    z-index: 1;
-  }
-
-  /* ── Modal ── */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(26,46,37,0.55);
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.22s;
-  }
-  .modal-overlay.open {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .modal {
-    background: var(--paper);
-    border-radius: 16px;
-    width: 100%;
-    max-width: 480px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.3);
-    transform: translateY(20px);
-    transition: transform 0.22s;
-  }
-  .modal-overlay.open .modal { transform: translateY(0); }
-
-  .modal-header {
-    padding: 20px 24px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .modal-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
-    color: var(--forest);
-  }
-  .modal-close {
-    background: none;
-    border: none;
-    font-size: 1.3rem;
-    cursor: pointer;
-    color: var(--smoke);
-    padding: 4px;
-  }
-  .modal-close:hover { color: var(--night); }
-
-  .modal-body { padding: 20px 24px 24px; }
-
-  .form-group { margin-bottom: 16px; }
-  .form-label {
-    display: block;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: var(--forest);
-    margin-bottom: 5px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .form-input, .form-textarea, .form-select {
-    width: 100%;
-    padding: 9px 12px;
-    border: 1.5px solid #e0ddd5;
-    border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem;
-    background: white;
-    color: var(--night);
-    transition: border-color 0.15s;
-  }
-  .form-input:focus, .form-textarea:focus, .form-select:focus {
-    outline: none;
-    border-color: var(--moss);
-  }
-  .form-textarea { resize: vertical; min-height: 70px; }
-
-  .form-row { display: flex; gap: 12px; }
-  .form-row .form-group { flex: 1; }
-
-  /* Star rating input */
-  .star-input { display: flex; gap: 4px; }
-  .star-input .star {
-    font-size: 1.4rem;
-    cursor: pointer;
-    transition: transform 0.1s;
-  }
-  .star-input .star:hover { transform: scale(1.15); }
-
-  /* Multi-criteria rating */
-  .rating-criteria { display: flex; flex-direction: column; gap: 10px; }
-  .rating-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .rating-label {
-    font-size: 0.82rem;
-    color: var(--night);
-    width: 90px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  /* Revisit toggle */
-  .revisit-toggle {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    background: white;
-    border: 1.5px solid #e0ddd5;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.15s;
-    user-select: none;
-  }
-  .revisit-toggle:hover { border-color: var(--moss); }
-  .revisit-toggle.active {
-    border-color: var(--ember);
-    background: #fff3ee;
-  }
-  .revisit-toggle .toggle-icon { font-size: 1.4rem; }
-  .revisit-toggle .toggle-text { flex: 1; font-size: 0.88rem; color: var(--night); }
-  .revisit-toggle .toggle-check {
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    border: 2px solid #ccc;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.75rem;
-    color: white;
-    background: transparent;
-    transition: all 0.15s;
-    flex-shrink: 0;
-  }
-  .revisit-toggle.active .toggle-check {
-    background: var(--ember);
-    border-color: var(--ember);
-  }
-
-  /* Card revisit badge */
-  .revisit-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 0.7rem;
-    background: #fff3ee;
-    color: var(--ember);
-    border: 1px solid #f5cdb8;
-    border-radius: 10px;
-    padding: 2px 7px;
-    font-weight: 500;
-    margin-top: 4px;
-  }
-
-  /* Workation badge */
-  .workation-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 0.7rem;
-    background: #eef3ff;
-    color: #3a5fd4;
-    border: 1px solid #c0ccf5;
-    border-radius: 10px;
-    padding: 2px 7px;
-    font-weight: 500;
-    margin-top: 4px;
-    margin-left: 4px;
-  }
-
-  /* Website link in card */
-  .card-website {
-    font-size: 0.75rem;
-    margin-top: 5px;
-  }
-  .card-website a {
-    color: var(--moss);
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-  }
-  .card-website a:hover { text-decoration: underline; color: var(--forest); }
-
-  /* Criteria stars in card */
-  .criteria-stars {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin-top: 5px;
-  }
-  .criteria-row-small {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.72rem;
-    color: #888;
-  }
-  .criteria-row-small .stars { font-size: 0.72rem; }
-  .criteria-row-small .clabel { width: 68px; flex-shrink: 0; }
-
-  /* Photo upload */
-  .photo-upload {
-    border: 2px dashed #d0ccc2;
-    border-radius: 10px;
-    padding: 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.18s;
-    position: relative;
-  }
-  .photo-upload:hover { border-color: var(--moss); background: rgba(74,124,89,0.04); }
-  .photo-upload input[type=file] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-  }
-  .photo-upload-icon { font-size: 2rem; margin-bottom: 6px; }
-  .photo-upload p { font-size: 0.82rem; color: #888; }
-  .photo-upload .gps-result {
-    margin-top: 10px;
-    font-size: 0.8rem;
-    padding: 7px 10px;
-    border-radius: 6px;
-    font-weight: 500;
-  }
-  .gps-result.success { background: #edf7ed; color: #2d7a2d; }
-  .gps-result.warn { background: #fff3e0; color: #b05a00; }
-
-  /* Koordinaten manuell */
-  .coords-hint {
-    font-size: 0.75rem;
-    color: #aaa;
-    margin-top: 4px;
-    margin-bottom: 10px;
-  }
-
-  .gmaps-paste-wrap {
-    position: relative;
-    margin-bottom: 8px;
-  }
-  .gmaps-paste-input {
-    width: 100%;
-    padding: 9px 12px 9px 36px;
-    border: 1.5px solid #e0ddd5;
-    border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.88rem;
-    background: white;
-    color: var(--night);
-    transition: border-color 0.15s;
-  }
-  .gmaps-paste-input:focus { outline: none; border-color: var(--moss); }
-  .gmaps-paste-input::placeholder { color: #bbb; }
-  .gmaps-paste-icon {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1rem;
-    pointer-events: none;
-  }
-  .gmaps-parse-result {
-    font-size: 0.78rem;
-    padding: 6px 10px;
-    border-radius: 6px;
-    margin-top: 5px;
-    font-weight: 500;
-    display: none;
-  }
-  .gmaps-parse-result.success { background: #edf7ed; color: #2d7a2d; display: block; }
-  .gmaps-parse-result.error   { background: #fff3e0; color: #b05a00; display: block; }
-
-  .type-toggle {
-    display: flex;
-    gap: 8px;
-  }
-  .type-option {
-    flex: 1;
-    padding: 9px;
-    border: 1.5px solid #e0ddd5;
-    border-radius: 8px;
-    text-align: center;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: all 0.15s;
-    background: white;
-  }
-  .type-option.active {
-    border-color: var(--ember);
-    background: #fff3ee;
-    color: var(--ember);
-    font-weight: 600;
-  }
-  .type-option .type-icon { font-size: 1.3rem; display: block; margin-bottom: 3px; }
-
-  .modal-footer {
-    padding: 0 24px 24px;
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-  }
-
-  .btn-save {
-    background: var(--forest);
-    color: white;
-    padding: 10px 24px;
-    font-size: 0.9rem;
-  }
-  .btn-save:hover { background: var(--night); }
-
-  /* ── Map popup ── */
-  .leaflet-popup-content-wrapper {
-    border-radius: 12px !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important;
-    border: none !important;
-  }
-  .popup-content { min-width: 200px; }
-  .popup-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--forest);
-    margin-bottom: 4px;
-  }
-  .popup-meta { font-size: 0.78rem; color: #888; margin-bottom: 6px; }
-  .popup-note { font-size: 0.82rem; color: #555; margin-bottom: 8px; }
-  .popup-actions { display: flex; gap: 6px; }
-  .popup-btn {
-    padding: 5px 10px;
-    border-radius: 5px;
-    border: none;
-    cursor: pointer;
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-
-  /* Marker icons */
-  .marker-visited { filter: hue-rotate(0deg); }
-  .marker-wishlist { filter: hue-rotate(200deg); }
-
-  /* Pin-Modus */
-  .map-pin-mode { cursor: crosshair !important; }
-  .map-pin-mode .leaflet-interactive { cursor: crosshair !important; }
-
-  .pin-mode-banner {
-    position: absolute;
-    top: 14px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 800;
-    background: var(--ember);
-    color: white;
-    padding: 9px 20px;
-    border-radius: 24px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
-    box-shadow: 0 4px 16px rgba(212,96,58,0.45);
-    display: none;
-    align-items: center;
-    gap: 10px;
-    white-space: nowrap;
-  }
-  .pin-mode-banner.active { display: flex; }
-  .pin-mode-banner button {
-    background: rgba(255,255,255,0.25);
-    border: none;
-    color: white;
-    border-radius: 12px;
-    padding: 3px 10px;
-    font-size: 0.78rem;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .pin-mode-banner button:hover { background: rgba(255,255,255,0.4); }
-
-  .coord-pin-btn {
-    width: 100%;
-    padding: 9px 12px;
-    border: 1.5px dashed var(--moss);
-    border-radius: 8px;
-    background: white;
-    color: var(--forest);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.88rem;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.15s;
-    margin-bottom: 8px;
-  }
-  .coord-pin-btn:hover { background: #f0f7f2; border-color: var(--forest); }
-  .coord-pin-btn.active { background: #fff3ee; border-color: var(--ember); color: var(--ember); }
-
-  .pin-set-indicator {
-    font-size: 0.78rem;
-    color: #2d7a2d;
-    background: #edf7ed;
-    border-radius: 6px;
-    padding: 6px 10px;
-    margin-bottom: 8px;
-    display: none;
-  }
-  .pin-set-indicator.visible { display: block; }
-
-  /* Fab button */
-  .fab {
-    position: absolute;
-    bottom: 30px;
-    right: 24px;
-    z-index: 900;
-    background: var(--ember);
-    color: white;
-    border: none;
-    border-radius: 50px;
-    padding: 13px 20px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-    box-shadow: 0 4px 20px rgba(212,96,58,0.45);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s;
-  }
-  .fab:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(212,96,58,0.5); }
-
-  .map-wrapper {
-    flex: 1;
-    position: relative;
-    min-width: 0;
-    min-height: 0;
-  }
-
-  #map {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-  }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    bottom: 90px;
-    right: 24px;
-    background: var(--forest);
-    color: white;
-    padding: 10px 18px;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    z-index: 3000;
-    transform: translateY(20px);
-    opacity: 0;
-    transition: all 0.25s;
-    pointer-events: none;
-  }
-  .toast.show { transform: translateY(0); opacity: 1; }
-
-  /* Scrollbar for sidebar */
-  .sidebar ::-webkit-scrollbar { width: 4px; }
-
-  /* ── Password Screen ── */
-  .lock-screen {
-    position: fixed;
-    inset: 0;
-    background: var(--forest);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 0;
-  }
-  .lock-screen.hidden { display: none; }
-
-  .lock-card {
-    background: var(--paper);
-    border-radius: 20px;
-    padding: 40px 36px 36px;
-    width: 100%;
-    max-width: 340px;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-  }
-  .lock-icon {
-    font-size: 3rem;
-    line-height: 1;
-  }
-  .lock-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.5rem;
-    color: var(--forest);
-    text-align: center;
-    line-height: 1.3;
-  }
-  .lock-subtitle {
-    font-size: 0.82rem;
-    color: var(--smoke);
-    text-align: center;
-    margin-top: -12px;
-  }
-  .lock-input-wrap {
-    width: 100%;
-    position: relative;
-  }
-  .lock-input {
-    width: 100%;
-    padding: 12px 44px 12px 14px;
-    border: 1.5px solid #e0ddd5;
-    border-radius: 10px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 1rem;
-    letter-spacing: 0.15em;
-    background: white;
-    color: var(--night);
-    transition: border-color 0.15s;
-    text-align: center;
-  }
-  .lock-input:focus { outline: none; border-color: var(--moss); }
-  .lock-input.error { border-color: var(--ember); animation: shake 0.35s ease; }
-  .lock-eye {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.1rem;
-    opacity: 0.45;
-    padding: 2px;
-  }
-  .lock-eye:hover { opacity: 0.8; }
-  .lock-btn {
-    width: 100%;
-    padding: 12px;
-    background: var(--forest);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
-  }
-  .lock-btn:hover { background: var(--night); transform: translateY(-1px); }
-  .lock-btn:active { transform: translateY(0); }
-  .lock-error {
-    font-size: 0.78rem;
-    color: var(--ember);
-    text-align: center;
-    min-height: 18px;
-    margin-top: -10px;
-  }
-  .lock-change-wrap {
-    font-size: 0.72rem;
-    color: var(--smoke);
-    text-align: center;
-    cursor: pointer;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .lock-change-wrap:hover { color: var(--forest); }
-
-  /* Change-password modal */
-  .pw-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(26,46,37,0.6);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-  }
-  .pw-modal.open { opacity: 1; pointer-events: all; }
-  .pw-modal-card {
-    background: var(--paper);
-    border-radius: 16px;
-    padding: 28px;
-    width: 100%;
-    max-width: 320px;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.3);
-  }
-  .pw-modal-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.1rem;
-    color: var(--forest);
-    margin-bottom: 18px;
-  }
-  .pw-modal-input {
-    width: 100%;
-    padding: 9px 12px;
-    border: 1.5px solid #e0ddd5;
-    border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem;
-    background: white;
-    color: var(--night);
-    margin-bottom: 10px;
-  }
-  .pw-modal-input:focus { outline: none; border-color: var(--moss); }
-  .pw-modal-btns { display: flex; gap: 8px; margin-top: 4px; }
-  .pw-modal-save {
-    flex: 1; padding: 9px; background: var(--forest); color: white;
-    border: none; border-radius: 8px; cursor: pointer;
-    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600;
-  }
-  .pw-modal-save:hover { background: var(--night); }
-  .pw-modal-cancel {
-    flex: 1; padding: 9px; background: white; color: var(--forest);
-    border: 1.5px solid #e0ddd5; border-radius: 8px; cursor: pointer;
-    font-family: 'DM Sans', sans-serif; font-size: 0.85rem;
-  }
-  .pw-modal-error { font-size: 0.75rem; color: var(--ember); margin-bottom: 6px; min-height: 16px; }
-
-  @keyframes shake {
-    0%,100% { transform: translateX(0); }
-    20% { transform: translateX(-8px); }
-    40% { transform: translateX(8px); }
-    60% { transform: translateX(-5px); }
-    80% { transform: translateX(5px); }
-  }
-
-  /* ── Mobile sidebar toggle ── */
-  .sidebar-toggle {
-    display: none;
-    background: none;
-    border: none;
-    color: var(--cream);
-    font-size: 1.3rem;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 6px;
-    transition: background 0.15s;
-  }
-  .sidebar-toggle:hover { background: rgba(255,255,255,0.1); }
-
-  .sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 500;
-  }
-  .sidebar-overlay.open { display: block; }
-
-  /* ── Sync / settings panel ── */
-  .sync-panel {
-    position: fixed;
-    top: 56px;
-    right: 0;
-    width: 320px;
-    background: var(--paper);
-    border-left: 1px solid rgba(122,92,62,0.15);
-    border-bottom: 1px solid rgba(122,92,62,0.15);
-    border-radius: 0 0 0 12px;
-    box-shadow: -4px 4px 24px var(--shadow);
-    z-index: 1500;
-    padding: 18px 20px;
-    transform: translateX(100%);
-    transition: transform 0.25s ease;
-  }
-  .sync-panel.open { transform: translateX(0); }
-
-  .sync-panel h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem;
-    color: var(--forest);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .sync-section {
-    margin-bottom: 14px;
-  }
-  .sync-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--forest);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 6px;
-    display: block;
-  }
-  .sync-filename-wrap {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-  .sync-filename-input {
-    flex: 1;
-    padding: 7px 10px;
-    border: 1.5px solid #e0ddd5;
-    border-radius: 7px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.82rem;
-    background: white;
-    color: var(--night);
-  }
-  .sync-filename-input:focus { outline: none; border-color: var(--moss); }
-  .sync-ext {
-    font-size: 0.78rem;
-    color: var(--smoke);
-    flex-shrink: 0;
-  }
-
-  .sync-auto-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-top: 1px solid rgba(122,92,62,0.1);
-  }
-  .sync-auto-label {
-    font-size: 0.82rem;
-    color: var(--night);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .toggle-switch {
-    position: relative;
-    width: 36px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-  .toggle-switch input { opacity: 0; width: 0; height: 0; }
-  .toggle-switch .slider {
-    position: absolute;
-    inset: 0;
-    background: #ccc;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .toggle-switch .slider:before {
-    content: '';
-    position: absolute;
-    width: 14px; height: 14px;
-    left: 3px; top: 3px;
-    background: white;
-    border-radius: 50%;
-    transition: transform 0.2s;
-  }
-  .toggle-switch input:checked + .slider { background: var(--moss); }
-  .toggle-switch input:checked + .slider:before { transform: translateX(16px); }
-
-  .sync-btn-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-  }
-  .sync-btn {
-    flex: 1;
-    padding: 8px 12px;
-    border-radius: 7px;
-    border: none;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    transition: all 0.15s;
-  }
-  .sync-btn-export { background: var(--forest); color: white; }
-  .sync-btn-export:hover { background: var(--night); }
-  .sync-btn-import { background: white; color: var(--forest); border: 1.5px solid var(--sage); }
-  .sync-btn-import:hover { background: var(--cream); }
-
-  .sync-info {
-    font-size: 0.72rem;
-    color: var(--smoke);
-    margin-top: 8px;
-    line-height: 1.5;
-  }
-  .sync-info a { color: var(--moss); text-decoration: none; }
-  .sync-close {
-    position: absolute;
-    top: 14px; right: 16px;
-    background: none; border: none;
-    font-size: 1.1rem; cursor: pointer;
-    color: var(--smoke);
-  }
-  .sync-close:hover { color: var(--night); }
-
-  /* ── Responsive ── */
-  @media (max-width: 680px) {
-    .sidebar-toggle { display: block; }
-
-    .sidebar {
-      position: fixed;
-      top: 56px; left: 0; bottom: 0;
-      z-index: 600;
-      transform: translateX(-100%);
-      transition: transform 0.28s ease;
-      width: 300px;
-      box-shadow: 4px 0 24px rgba(0,0,0,0.18);
-    }
-    .sidebar.open { transform: translateX(0); }
-
-    .app-body { flex-direction: column; }
-
-    .map-wrapper {
-      width: 100%;
-      flex: 1;
-    }
-
-    .fab { bottom: 20px; right: 16px; padding: 11px 16px; font-size: 0.85rem; }
-
-    .btn-ghost span { display: none; }
-
-    .sync-panel { width: 100%; border-radius: 0; }
+    --forest:#2d4a3e; --moss:#4a7c59; --sage:#8ab89a; --cream:#f5f0e8;
+    --paper:#fffdf7; --bark:#7a5c3e; --ember:#d4603a; --gold:#e8b84b;
+    --night:#1a2e25; --smoke:#c8c4b8; --shadow:rgba(26,46,37,0.15);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{height:100%}
+  body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--night);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+  header{background:var(--forest);color:var(--cream);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:1000;box-shadow:0 2px 12px var(--shadow)}
+  .logo{font-family:'Playfair Display',serif;font-size:1.3rem;letter-spacing:.02em;display:flex;align-items:center;gap:10px}
+  .logo span{font-size:1.5rem}
+  .header-actions{display:flex;gap:8px}
+  .btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;transition:all .18s ease;display:flex;align-items:center;gap:6px}
+  .btn-ghost{background:transparent;color:var(--sage);border:1px solid rgba(138,184,154,.35)}
+  .btn-ghost:hover{background:rgba(138,184,154,.12);color:var(--cream)}
+  .btn-primary{background:var(--ember);color:white}
+  .btn-primary:hover{background:#c0522d;transform:translateY(-1px)}
+  .app-body{display:flex;flex:1;overflow:hidden;min-height:0}
+  .sidebar{width:340px;flex-shrink:0;background:var(--paper);border-right:1px solid rgba(122,92,62,.15);display:flex;flex-direction:column;overflow:hidden}
+  .sidebar-tabs{display:flex;border-bottom:1px solid rgba(122,92,62,.15);flex-shrink:0}
+  .tab-btn{flex:1;padding:12px 8px;border:none;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:500;color:var(--smoke);border-bottom:2px solid transparent;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:6px}
+  .tab-btn.active{color:var(--forest);border-bottom-color:var(--ember)}
+  .tab-btn .count{background:var(--sage);color:white;border-radius:10px;padding:1px 6px;font-size:.68rem;font-weight:600}
+  .tab-btn.active .count{background:var(--ember)}
+  .site-list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .site-list::-webkit-scrollbar{width:4px}
+  .site-list::-webkit-scrollbar-thumb{background:var(--sage);border-radius:2px}
+  .filter-bar{padding:10px 12px;border-bottom:1px solid rgba(122,92,62,.12);display:flex;flex-direction:column;gap:7px;flex-shrink:0;background:var(--paper)}
+  .search-input-wrap{position:relative}
+  .search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:.85rem;pointer-events:none}
+  .search-input{width:100%;padding:7px 10px 7px 28px;border:1.5px solid #e0ddd5;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.84rem;background:white;color:var(--night);transition:border-color .15s}
+  .search-input:focus{outline:none;border-color:var(--moss)}
+  .search-input::placeholder{color:#bbb}
+  .filter-row{display:flex;gap:6px;flex-wrap:wrap}
+  .filter-select{flex:1;min-width:90px;padding:5px 8px;border:1.5px solid #e0ddd5;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.78rem;background:white;color:var(--night);cursor:pointer;transition:border-color .15s}
+  .filter-select:focus{outline:none;border-color:var(--moss)}
+  .filter-chips{display:flex;gap:5px;flex-wrap:wrap}
+  .chip{padding:3px 9px;border-radius:12px;border:1.5px solid #e0ddd5;background:white;font-size:.73rem;font-family:'DM Sans',sans-serif;cursor:pointer;color:#888;transition:all .15s;white-space:nowrap;user-select:none}
+  .chip:hover{border-color:var(--sage);color:var(--forest)}
+  .chip.active{background:var(--forest);border-color:var(--forest);color:white}
+  .chip.revisit-chip.active{background:var(--ember);border-color:var(--ember)}
+  .chip.workation-chip.active{background:#3a5fd4;border-color:#3a5fd4}
+  .filter-clear{font-size:.72rem;color:var(--smoke);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;padding:2px 4px;border-radius:4px;align-self:center;margin-left:auto;flex-shrink:0}
+  .filter-clear:hover{color:var(--ember)}
+  .filter-count{font-size:.72rem;color:var(--smoke);padding:2px 0}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--smoke)}
+  .empty-state .icon{font-size:3rem;margin-bottom:12px}
+  .empty-state p{font-size:.85rem;line-height:1.5}
+  .camp-card{background:white;border-radius:10px;padding:12px 14px;cursor:pointer;border:1.5px solid transparent;transition:all .18s;box-shadow:0 1px 4px var(--shadow)}
+  .camp-card:hover{border-color:var(--sage);transform:translateX(2px)}
+  .camp-card.active{border-color:var(--ember);background:#fff9f6}
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
+  .card-name{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;color:var(--night);line-height:1.3}
+  .card-actions{display:flex;gap:4px;flex-shrink:0}
+  .icon-btn{background:none;border:none;cursor:pointer;font-size:.85rem;padding:2px 4px;border-radius:4px;opacity:.5;transition:opacity .15s}
+  .icon-btn:hover{opacity:1}
+  .card-meta{font-size:.75rem;color:var(--smoke);margin-bottom:6px;display:flex;gap:10px;flex-wrap:wrap}
+  .card-meta span{display:flex;align-items:center;gap:3px}
+  .stars{display:flex;gap:2px;font-size:.85rem}
+  .star{color:#ddd;cursor:default}
+  .star.filled{color:var(--gold)}
+  .card-note{font-size:.78rem;color:#888;font-style:italic;margin-top:5px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #map{flex:1;z-index:1}
+  .modal-overlay{position:fixed;inset:0;background:rgba(26,46,37,.55);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .22s}
+  .modal-overlay.open{opacity:1;pointer-events:all}
+  .modal{background:var(--paper);border-radius:16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.3);transform:translateY(20px);transition:transform .22s}
+  .modal-overlay.open .modal{transform:translateY(0)}
+  .modal-header{padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between}
+  .modal-title{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--forest)}
+  .modal-close{background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--smoke);padding:4px}
+  .modal-close:hover{color:var(--night)}
+  .modal-body{padding:20px 24px 24px}
+  .form-group{margin-bottom:16px}
+  .form-label{display:block;font-size:.78rem;font-weight:500;color:var(--forest);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em}
+  .form-input,.form-textarea,.form-select{width:100%;padding:9px 12px;border:1.5px solid #e0ddd5;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:white;color:var(--night);transition:border-color .15s}
+  .form-input:focus,.form-textarea:focus,.form-select:focus{outline:none;border-color:var(--moss)}
+  .form-textarea{resize:vertical;min-height:70px}
+  .form-row{display:flex;gap:12px}
+  .form-row .form-group{flex:1}
+  .star-input{display:flex;gap:4px}
+  .star-input .star{font-size:1.4rem;cursor:pointer;transition:transform .1s}
+  .star-input .star:hover{transform:scale(1.15)}
+  .rating-criteria{display:flex;flex-direction:column;gap:10px}
+  .rating-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .rating-label{font-size:.82rem;color:var(--night);width:90px;flex-shrink:0;display:flex;align-items:center;gap:5px}
+  .revisit-toggle{display:flex;align-items:center;gap:12px;padding:10px 14px;background:white;border:1.5px solid #e0ddd5;border-radius:8px;cursor:pointer;transition:all .15s;user-select:none}
+  .revisit-toggle:hover{border-color:var(--moss)}
+  .revisit-toggle.active{border-color:var(--ember);background:#fff3ee}
+  .revisit-toggle .toggle-icon{font-size:1.4rem}
+  .revisit-toggle .toggle-text{flex:1;font-size:.88rem;color:var(--night)}
+  .revisit-toggle .toggle-check{width:22px;height:22px;border-radius:50%;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:white;background:transparent;transition:all .15s;flex-shrink:0}
+  .revisit-toggle.active .toggle-check{background:var(--ember);border-color:var(--ember)}
+  .revisit-badge{display:inline-flex;align-items:center;gap:3px;font-size:.7rem;background:#fff3ee;color:var(--ember);border:1px solid #f5cdb8;border-radius:10px;padding:2px 7px;font-weight:500;margin-top:4px}
+  .workation-badge{display:inline-flex;align-items:center;gap:3px;font-size:.7rem;background:#eef3ff;color:#3a5fd4;border:1px solid #c0ccf5;border-radius:10px;padding:2px 7px;font-weight:500;margin-top:4px;margin-left:4px}
+  .card-website{font-size:.75rem;margin-top:5px}
+  .card-website a{color:var(--moss);text-decoration:none;display:inline-flex;align-items:center;gap:3px}
+  .card-website a:hover{text-decoration:underline;color:var(--forest)}
+  .criteria-stars{display:flex;flex-direction:column;gap:2px;margin-top:5px}
+  .criteria-row-small{display:flex;align-items:center;gap:5px;font-size:.72rem;color:#888}
+  .criteria-row-small .stars{font-size:.72rem}
+  .criteria-row-small .clabel{width:68px;flex-shrink:0}
+  .photo-upload{border:2px dashed #d0ccc2;border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .18s;position:relative}
+  .photo-upload:hover{border-color:var(--moss);background:rgba(74,124,89,.04)}
+  .photo-upload input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .photo-upload-icon{font-size:2rem;margin-bottom:6px}
+  .photo-upload p{font-size:.82rem;color:#888}
+  .photo-upload .gps-result{margin-top:10px;font-size:.8rem;padding:7px 10px;border-radius:6px;font-weight:500}
+  .gps-result.success{background:#edf7ed;color:#2d7a2d}
+  .gps-result.warn{background:#fff3e0;color:#b05a00}
+  .coords-hint{font-size:.75rem;color:#aaa;margin-top:4px;margin-bottom:10px}
+  .gmaps-paste-wrap{position:relative;margin-bottom:8px}
+  .gmaps-paste-input{width:100%;padding:9px 12px 9px 36px;border:1.5px solid #e0ddd5;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;background:white;color:var(--night);transition:border-color .15s}
+  .gmaps-paste-input:focus{outline:none;border-color:var(--moss)}
+  .gmaps-paste-input::placeholder{color:#bbb}
+  .gmaps-paste-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:1rem;pointer-events:none}
+  .gmaps-parse-result{font-size:.78rem;padding:6px 10px;border-radius:6px;margin-top:5px;font-weight:500;display:none}
+  .gmaps-parse-result.success{background:#edf7ed;color:#2d7a2d;display:block}
+  .gmaps-parse-result.error{background:#fff3e0;color:#b05a00;display:block}
+  .type-toggle{display:flex;gap:8px}
+  .type-option{flex:1;padding:9px;border:1.5px solid #e0ddd5;border-radius:8px;text-align:center;cursor:pointer;font-size:.85rem;transition:all .15s;background:white}
+  .type-option.active{border-color:var(--ember);background:#fff3ee;color:var(--ember);font-weight:600}
+  .type-option .type-icon{font-size:1.3rem;display:block;margin-bottom:3px}
+  .modal-footer{padding:0 24px 24px;display:flex;gap:10px;justify-content:flex-end}
+  .btn-save{background:var(--forest);color:white;padding:10px 24px;font-size:.9rem}
+  .btn-save:hover{background:var(--night)}
+  .leaflet-popup-content-wrapper{border-radius:12px!important;box-shadow:0 8px 24px rgba(0,0,0,.18)!important;border:none!important}
+  .popup-content{min-width:200px}
+  .popup-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--forest);margin-bottom:4px}
+  .popup-meta{font-size:.78rem;color:#888;margin-bottom:6px}
+  .popup-note{font-size:.82rem;color:#555;margin-bottom:8px}
+  .popup-actions{display:flex;gap:6px}
+  .popup-btn{padding:5px 10px;border-radius:5px;border:none;cursor:pointer;font-size:.75rem;font-weight:500}
+  .map-pin-mode{cursor:crosshair!important}
+  .map-pin-mode .leaflet-interactive{cursor:crosshair!important}
+  .pin-mode-banner{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:800;background:var(--ember);color:white;padding:9px 20px;border-radius:24px;font-size:.85rem;font-weight:600;font-family:'DM Sans',sans-serif;box-shadow:0 4px 16px rgba(212,96,58,.45);display:none;align-items:center;gap:10px;white-space:nowrap}
+  .pin-mode-banner.active{display:flex}
+  .pin-mode-banner button{background:rgba(255,255,255,.25);border:none;color:white;border-radius:12px;padding:3px 10px;font-size:.78rem;cursor:pointer;font-family:'DM Sans',sans-serif}
+  .pin-mode-banner button:hover{background:rgba(255,255,255,.4)}
+  .coord-pin-btn{width:100%;padding:9px 12px;border:1.5px dashed var(--moss);border-radius:8px;background:white;color:var(--forest);font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;margin-bottom:8px}
+  .coord-pin-btn:hover{background:#f0f7f2;border-color:var(--forest)}
+  .coord-pin-btn.active{background:#fff3ee;border-color:var(--ember);color:var(--ember)}
+  .pin-set-indicator{font-size:.78rem;color:#2d7a2d;background:#edf7ed;border-radius:6px;padding:6px 10px;margin-bottom:8px;display:none}
+  .pin-set-indicator.visible{display:block}
+  .fab{position:absolute;bottom:30px;right:24px;z-index:900;background:var(--ember);color:white;border:none;border-radius:50px;padding:13px 20px;font-size:.9rem;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;box-shadow:0 4px 20px rgba(212,96,58,.45);display:flex;align-items:center;gap:8px;transition:all .2s}
+  .fab:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(212,96,58,.5)}
+  .map-wrapper{flex:1;position:relative;min-width:0;min-height:0}
+  #map{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;z-index:1}
+  .toast{position:fixed;bottom:90px;right:24px;background:var(--forest);color:white;padding:10px 18px;border-radius:8px;font-size:.82rem;z-index:3000;transform:translateY(20px);opacity:0;transition:all .25s;pointer-events:none}
+  .toast.show{transform:translateY(0);opacity:1}
+  .sidebar ::-webkit-scrollbar{width:4px}
+
+  /* ── Lock Screen ── */
+  .lock-screen{position:fixed;inset:0;background:var(--forest);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column}
+  .lock-screen.hidden{display:none}
+  .lock-card{background:var(--paper);border-radius:20px;padding:40px 36px 36px;width:100%;max-width:340px;box-shadow:0 24px 64px rgba(0,0,0,.4);display:flex;flex-direction:column;align-items:center;gap:18px}
+  .lock-icon{font-size:3rem;line-height:1}
+  .lock-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--forest);text-align:center;line-height:1.3}
+  .lock-subtitle{font-size:.82rem;color:var(--smoke);text-align:center;margin-top:-10px}
+  .lock-input-wrap{width:100%;position:relative}
+  .lock-input{width:100%;padding:12px 44px 12px 14px;border:1.5px solid #e0ddd5;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:1rem;letter-spacing:.15em;background:white;color:var(--night);transition:border-color .15s;text-align:center}
+  .lock-input:focus{outline:none;border-color:var(--moss)}
+  .lock-input.error{border-color:var(--ember);animation:shake .35s ease}
+  .lock-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;opacity:.45;padding:2px}
+  .lock-eye:hover{opacity:.8}
+  .lock-btn{width:100%;padding:12px;background:var(--forest);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:background .15s,transform .1s}
+  .lock-btn:hover{background:var(--night);transform:translateY(-1px)}
+  .lock-error{font-size:.78rem;color:var(--ember);text-align:center;min-height:18px;margin-top:-8px}
+  /* Divider + file-unlock on lock screen */
+  .lock-divider{display:flex;align-items:center;gap:10px;width:100%;color:var(--smoke);font-size:.75rem}
+  .lock-divider::before,.lock-divider::after{content:'';flex:1;height:1px;background:rgba(122,92,62,.2)}
+  .lock-file-btn{width:100%;padding:11px;background:white;color:var(--forest);border:1.5px solid rgba(74,124,89,.4);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;position:relative}
+  .lock-file-btn:hover{background:#f0f7f2;border-color:var(--moss)}
+  .lock-file-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .lock-change-wrap{font-size:.72rem;color:var(--smoke);text-align:center;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+  .lock-change-wrap:hover{color:var(--forest)}
+  /* Change-pw modal */
+  .pw-modal{position:fixed;inset:0;background:rgba(26,46,37,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+  .pw-modal.open{opacity:1;pointer-events:all}
+  .pw-modal-card{background:var(--paper);border-radius:16px;padding:28px;width:100%;max-width:320px;box-shadow:0 16px 48px rgba(0,0,0,.3)}
+  .pw-modal-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--forest);margin-bottom:18px}
+  .pw-modal-input{width:100%;padding:9px 12px;border:1.5px solid #e0ddd5;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:white;color:var(--night);margin-bottom:10px}
+  .pw-modal-input:focus{outline:none;border-color:var(--moss)}
+  .pw-modal-btns{display:flex;gap:8px;margin-top:4px}
+  .pw-modal-save{flex:1;padding:9px;background:var(--forest);color:white;border:none;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600}
+  .pw-modal-save:hover{background:var(--night)}
+  .pw-modal-cancel{flex:1;padding:9px;background:white;color:var(--forest);border:1.5px solid #e0ddd5;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.85rem}
+  .pw-modal-error{font-size:.75rem;color:var(--ember);margin-bottom:6px;min-height:16px}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+  /* Mobile */
+  .sidebar-toggle{display:none;background:none;border:none;color:var(--cream);font-size:1.3rem;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background .15s}
+  .sidebar-toggle:hover{background:rgba(255,255,255,.1)}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500}
+  .sidebar-overlay.open{display:block}
+  /* Sync panel */
+  .sync-panel{position:fixed;top:56px;right:0;width:320px;background:var(--paper);border-left:1px solid rgba(122,92,62,.15);border-bottom:1px solid rgba(122,92,62,.15);border-radius:0 0 0 12px;box-shadow:-4px 4px 24px var(--shadow);z-index:1500;padding:18px 20px;transform:translateX(100%);transition:transform .25s ease}
+  .sync-panel.open{transform:translateX(0)}
+  .sync-panel h3{font-family:'Playfair Display',serif;font-size:1rem;color:var(--forest);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .sync-section{margin-bottom:14px}
+  .sync-label{font-size:.72rem;font-weight:600;color:var(--forest);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:block}
+  .sync-filename-wrap{display:flex;gap:6px;align-items:center}
+  .sync-filename-input{flex:1;padding:7px 10px;border:1.5px solid #e0ddd5;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.82rem;background:white;color:var(--night)}
+  .sync-filename-input:focus{outline:none;border-color:var(--moss)}
+  .sync-ext{font-size:.78rem;color:var(--smoke);flex-shrink:0}
+  .sync-auto-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid rgba(122,92,62,.1)}
+  .sync-auto-label{font-size:.82rem;color:var(--night);display:flex;align-items:center;gap:6px}
+  .toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+  .toggle-switch input{opacity:0;width:0;height:0}
+  .toggle-switch .slider{position:absolute;inset:0;background:#ccc;border-radius:20px;cursor:pointer;transition:background .2s}
+  .toggle-switch .slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:white;border-radius:50%;transition:transform .2s}
+  .toggle-switch input:checked+.slider{background:var(--moss)}
+  .toggle-switch input:checked+.slider:before{transform:translateX(16px)}
+  .sync-btn-row{display:flex;gap:8px;margin-top:10px}
+  .sync-btn{flex:1;padding:8px 12px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s}
+  .sync-btn-export{background:var(--forest);color:white}
+  .sync-btn-export:hover{background:var(--night)}
+  .sync-btn-import{background:white;color:var(--forest);border:1.5px solid var(--sage)}
+  .sync-btn-import:hover{background:var(--cream)}
+  .sync-info{font-size:.72rem;color:var(--smoke);margin-top:8px;line-height:1.5}
+  .sync-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--smoke)}
+  .sync-close:hover{color:var(--night)}
+  @media(max-width:680px){
+    .sidebar-toggle{display:block}
+    .sidebar{position:fixed;top:56px;left:0;bottom:0;z-index:600;transform:translateX(-100%);transition:transform .28s ease;width:300px;box-shadow:4px 0 24px rgba(0,0,0,.18)}
+    .sidebar.open{transform:translateX(0)}
+    .app-body{flex-direction:column}
+    .map-wrapper{width:100%;flex:1}
+    .fab{bottom:20px;right:16px;padding:11px 16px;font-size:.85rem}
+    .btn-ghost span{display:none}
+    .sync-panel{width:100%;border-radius:0}
   }
 </style>
 </head>
 <body>
 
-<!-- ── Lock Screen ── -->
+<!-- Lock Screen -->
 <div class="lock-screen" id="lockScreen">
   <div class="lock-card">
     <div class="lock-icon">🔒</div>
     <div class="lock-title">Meine Campingplätze</div>
     <p class="lock-subtitle">Bitte Passwort eingeben</p>
     <div class="lock-input-wrap">
-      <input class="lock-input" type="password" id="lockInput"
-             placeholder="••••••••"
+      <input class="lock-input" type="password" id="lockInput" placeholder="••••••••"
              onkeydown="if(event.key==='Enter') checkPassword()">
       <button class="lock-eye" id="lockEye" onclick="togglePwVisible()" title="Passwort anzeigen">👁</button>
     </div>
     <div class="lock-error" id="lockError"></div>
     <button class="lock-btn" onclick="checkPassword()">Entsperren</button>
+    <div class="lock-divider">oder</div>
+    <div class="lock-file-btn">
+      <input type="file" accept=".json" onchange="unlockWithFile(event)">
+      📂 Mit gespeicherter Datei entsperren
+    </div>
     <div class="lock-change-wrap" onclick="openChangePw()">Passwort ändern</div>
   </div>
 </div>
 
-<!-- ── Change Password Modal ── -->
+<!-- Change Password Modal -->
 <div class="pw-modal" id="pwModal">
   <div class="pw-modal-card">
     <div class="pw-modal-title">🔑 Passwort ändern</div>
@@ -1236,9 +283,7 @@
 <header>
   <div style="display:flex;align-items:center;gap:10px">
     <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Liste ein-/ausblenden">☰</button>
-    <div class="logo">
-      <span>🏕️</span> Meine Campingplätze
-    </div>
+    <div class="logo"><span>🏕️</span> Meine Campingplätze</div>
   </div>
   <div class="header-actions">
     <button class="btn btn-ghost" onclick="toggleSyncPanel()" title="Sync & Einstellungen">⚙️ <span>Sync</span></button>
@@ -1249,16 +294,13 @@
 <div class="sync-panel" id="syncPanel">
   <button class="sync-close" onclick="toggleSyncPanel()">✕</button>
   <h3>🔄 Sync & Datei</h3>
-
   <div class="sync-section">
     <span class="sync-label">Dateiname</span>
     <div class="sync-filename-wrap">
-      <input type="text" class="sync-filename-input" id="syncFilename"
-             value="meine-campingplaetze" placeholder="dateiname">
+      <input type="text" class="sync-filename-input" id="syncFilename" value="meine-campingplaetze" placeholder="dateiname">
       <span class="sync-ext">.json</span>
     </div>
   </div>
-
   <div class="sync-auto-row">
     <span class="sync-auto-label">🔁 Auto-Export bei jeder Änderung</span>
     <label class="toggle-switch">
@@ -1266,29 +308,24 @@
       <span class="slider"></span>
     </label>
   </div>
-
   <div class="sync-btn-row">
     <button class="sync-btn sync-btn-export" onclick="exportData()">⬇ Exportieren</button>
     <button class="sync-btn sync-btn-import" onclick="document.getElementById('importFile').click()">⬆ Importieren</button>
   </div>
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-
   <div class="sync-auto-row" style="margin-top:8px">
     <span class="sync-auto-label">🔑 Passwort ändern</span>
-    <button onclick="openChangePw()" style="padding:4px 12px;border-radius:7px;border:1.5px solid #e0ddd5;background:white;color:var(--forest);font-family:'DM Sans',sans-serif;font-size:0.78rem;cursor:pointer;">Ändern</button>
+    <button onclick="openChangePw()" style="padding:4px 12px;border-radius:7px;border:1.5px solid #e0ddd5;background:white;color:var(--forest);font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer">Ändern</button>
   </div>
-
   <p class="sync-info">
-    💡 <strong>Tipp für iCloud:</strong> Setze in deinen Browser-Einstellungen den Standard-Download-Ordner auf deinen iCloud Drive Ordner. Dann landet jeder Export automatisch dort.<br><br>
-    Beim Import wird die Datei mit deinen lokalen Daten zusammengeführt (keine Duplikate).
+    💡 <strong>Tipp:</strong> Jede exportierte Datei enthält dein aktuelles Passwort. Auf einem neuen Gerät einfach die Datei beim Lock Screen hochladen – sie entsperrt die App und importiert alle Daten in einem Schritt.<br><br>
+    <strong>iCloud-Tipp:</strong> Standard-Download-Ordner auf iCloud Drive setzen, dann landet jeder Export automatisch dort.
   </p>
 </div>
 
-<!-- Sidebar overlay for mobile -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
 <div class="app-body">
-  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-tabs">
       <button class="tab-btn active" id="tabVisited" onclick="switchTab('visited')">
@@ -1298,20 +335,14 @@
         ⭐ Wunschliste <span class="count" id="countWishlist">0</span>
       </button>
     </div>
-    <!-- Filter Bar -->
-    <div class="filter-bar" id="filterBar">
+    <div class="filter-bar">
       <div class="search-input-wrap">
         <span class="search-icon">🔍</span>
-        <input class="search-input" id="searchInput" type="text"
-               placeholder="Name suchen…" oninput="applyFilters()">
+        <input class="search-input" id="searchInput" type="text" placeholder="Name suchen…" oninput="applyFilters()">
       </div>
       <div class="filter-row">
-        <select class="filter-select" id="filterYear" onchange="applyFilters()">
-          <option value="">📅 Alle Jahre</option>
-        </select>
-        <select class="filter-select" id="filterCountry" onchange="applyFilters()">
-          <option value="">📍 Alle Länder</option>
-        </select>
+        <select class="filter-select" id="filterYear" onchange="applyFilters()"><option value="">📅 Alle Jahre</option></select>
+        <select class="filter-select" id="filterCountry" onchange="applyFilters()"><option value="">📍 Alle Länder</option></select>
         <button class="filter-clear" onclick="clearFilters()">✕ Zurücksetzen</button>
       </div>
       <div class="filter-chips">
@@ -1322,8 +353,6 @@
     </div>
     <div class="site-list" id="siteList"></div>
   </aside>
-
-  <!-- Map -->
   <div class="map-wrapper">
     <div id="map"></div>
     <div class="pin-mode-banner" id="pinModeBanner">
@@ -1336,33 +365,23 @@
 
 <!-- Modal -->
 <div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
-  <div class="modal" id="modal">
+  <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="modalTitle">Neuer Campingplatz</div>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body">
-
-      <!-- Typ -->
       <div class="form-group">
         <label class="form-label">Typ</label>
         <div class="type-toggle">
-          <div class="type-option active" id="typeVisited" onclick="setType('visited')">
-            <span class="type-icon">🏕️</span> Besucht
-          </div>
-          <div class="type-option" id="typeWishlist" onclick="setType('wishlist')">
-            <span class="type-icon">⭐</span> Wunschliste
-          </div>
+          <div class="type-option active" id="typeVisited" onclick="setType('visited')"><span class="type-icon">🏕️</span> Besucht</div>
+          <div class="type-option" id="typeWishlist" onclick="setType('wishlist')"><span class="type-icon">⭐</span> Wunschliste</div>
         </div>
       </div>
-
-      <!-- Name -->
       <div class="form-group">
         <label class="form-label">Name des Campingplatzes</label>
         <input type="text" class="form-input" id="inputName" placeholder="z.B. Camping am See">
       </div>
-
-      <!-- GPS aus Foto -->
       <div class="form-group">
         <label class="form-label">📸 GPS aus iPhone-Foto auslesen</label>
         <div class="photo-upload">
@@ -1372,27 +391,17 @@
           <div id="gpsResult" style="display:none" class="gps-result"></div>
         </div>
       </div>
-
-      <!-- Koordinaten per Karte oder manuell -->
-      <button class="coord-pin-btn" id="pinBtn" onclick="startPinMode()">
-        📍 Standort auf der Karte setzen
-      </button>
+      <button class="coord-pin-btn" id="pinBtn" onclick="startPinMode()">📍 Standort auf der Karte setzen</button>
       <div class="pin-set-indicator" id="pinSetIndicator">✅ Standort gesetzt – Koordinaten wurden übernommen</div>
-
-      <!-- Google Maps Paste -->
       <div class="form-group">
         <label class="form-label">📌 Koordinaten aus Google Maps einfügen</label>
         <div class="gmaps-paste-wrap">
           <span class="gmaps-paste-icon">🗺️</span>
-          <input type="text" class="gmaps-paste-input" id="gmapsPaste"
-                 placeholder="z.B. 48.137154, 11.576124"
-                 oninput="parseGmapsCoords(this.value)"
-                 onpaste="setTimeout(()=>parseGmapsCoords(this.value),0)">
+          <input type="text" class="gmaps-paste-input" id="gmapsPaste" placeholder="z.B. 48.137154, 11.576124"
+                 oninput="parseGmapsCoords(this.value)" onpaste="setTimeout(()=>parseGmapsCoords(this.value),0)">
         </div>
         <div class="gmaps-parse-result" id="gmapsResult"></div>
       </div>
-
-      <!-- Manuelle Koordinaten -->
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Breitengrad (Lat)</label>
@@ -1404,8 +413,6 @@
         </div>
       </div>
       <p class="coords-hint">💡 Koordinaten aus Google Maps einfügen, per Karten-Klick oder Foto – oder manuell eingeben</p>
-
-      <!-- Datum -->
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Datum</label>
@@ -1416,45 +423,29 @@
           <input type="text" class="form-input" id="inputLocation" placeholder="z.B. Bayern, Deutschland">
         </div>
       </div>
-
-      <!-- Bewertung nach Kriterien -->
       <div class="form-group" id="ratingGroup">
         <label class="form-label">Bewertung</label>
         <div class="rating-criteria">
           <div class="rating-row">
             <span class="rating-label">🌄 Lage</span>
             <div class="star-input" id="starLage">
-              <span class="star" onclick="setRating('lage',1)">★</span>
-              <span class="star" onclick="setRating('lage',2)">★</span>
-              <span class="star" onclick="setRating('lage',3)">★</span>
-              <span class="star" onclick="setRating('lage',4)">★</span>
-              <span class="star" onclick="setRating('lage',5)">★</span>
+              <span class="star" onclick="setRating('lage',1)">★</span><span class="star" onclick="setRating('lage',2)">★</span><span class="star" onclick="setRating('lage',3)">★</span><span class="star" onclick="setRating('lage',4)">★</span><span class="star" onclick="setRating('lage',5)">★</span>
             </div>
           </div>
           <div class="rating-row">
             <span class="rating-label">💶 Preis</span>
             <div class="star-input" id="starPreis">
-              <span class="star" onclick="setRating('preis',1)">★</span>
-              <span class="star" onclick="setRating('preis',2)">★</span>
-              <span class="star" onclick="setRating('preis',3)">★</span>
-              <span class="star" onclick="setRating('preis',4)">★</span>
-              <span class="star" onclick="setRating('preis',5)">★</span>
+              <span class="star" onclick="setRating('preis',1)">★</span><span class="star" onclick="setRating('preis',2)">★</span><span class="star" onclick="setRating('preis',3)">★</span><span class="star" onclick="setRating('preis',4)">★</span><span class="star" onclick="setRating('preis',5)">★</span>
             </div>
           </div>
           <div class="rating-row">
             <span class="rating-label">🧹 Sauberkeit</span>
             <div class="star-input" id="starSauberkeit">
-              <span class="star" onclick="setRating('sauberkeit',1)">★</span>
-              <span class="star" onclick="setRating('sauberkeit',2)">★</span>
-              <span class="star" onclick="setRating('sauberkeit',3)">★</span>
-              <span class="star" onclick="setRating('sauberkeit',4)">★</span>
-              <span class="star" onclick="setRating('sauberkeit',5)">★</span>
+              <span class="star" onclick="setRating('sauberkeit',1)">★</span><span class="star" onclick="setRating('sauberkeit',2)">★</span><span class="star" onclick="setRating('sauberkeit',3)">★</span><span class="star" onclick="setRating('sauberkeit',4)">★</span><span class="star" onclick="setRating('sauberkeit',5)">★</span>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Wiederbesuchen -->
       <div class="form-group" id="revisitGroup">
         <label class="form-label">Wiederbesuchen?</label>
         <div class="revisit-toggle" id="revisitToggle" onclick="toggleRevisit()">
@@ -1463,14 +454,10 @@
           <span class="toggle-check" id="revisitCheck">✓</span>
         </div>
       </div>
-
-      <!-- Website -->
       <div class="form-group">
         <label class="form-label">🌐 Website</label>
         <input type="url" class="form-input" id="inputWebsite" placeholder="https://www.campingplatz.de">
       </div>
-
-      <!-- Workation -->
       <div class="form-group">
         <label class="form-label">Workation?</label>
         <div class="revisit-toggle" id="workationToggle" onclick="toggleWorkation()">
@@ -1479,13 +466,10 @@
           <span class="toggle-check" id="workationCheck">✓</span>
         </div>
       </div>
-
-      <!-- Notizen -->
       <div class="form-group">
         <label class="form-label">Notizen</label>
         <textarea class="form-textarea" id="inputNotes" placeholder="Erfahrungen, Highlights, Tipps…"></textarea>
       </div>
-
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal()">Abbrechen</button>
@@ -1497,47 +481,129 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ── State ──────────────────────────────────────────────
 let campsites = JSON.parse(localStorage.getItem('campsites') || '[]');
-let currentTab = 'visited';
-let editingId = null;
-let currentRatings = { lage: 0, preis: 0, sauberkeit: 0 };
-let currentRevisit = false;
-let currentWorkation = false;
-let currentType = 'visited';
-let activeMarkerId = null;
-let markers = {};
+let currentTab = 'visited', editingId = null;
+let currentRatings = { lage:0, preis:0, sauberkeit:0 };
+let currentRevisit = false, currentWorkation = false, currentType = 'visited';
+let activeMarkerId = null, markers = {};
+let filterSearch = '', filterYear = '', filterCountry = '';
+let filterRevisit = false, filterWorkation = false;
 
-// ── Filter State ───────────────────────────────────────
-let filterSearch = '';
-let filterYear   = '';
-let filterCountry = '';
-let filterRevisit = false;
-let filterWorkation = false;
+// ── Password ────────────────────────────────────────────
+const DEFAULT_PW = 'camping123';
+const PW_KEY = 'campingPwHash';
+const SESSION_KEY = 'campingUnlocked';
 
-// ── Map Setup ──────────────────────────────────────────
-const map = L.map('map', { zoomControl: false }).setView([51.0, 10.5], 6);
+function hashPw(pw) {
+  let h = 5381;
+  for (let i = 0; i < pw.length; i++) h = (h * 33) ^ pw.charCodeAt(i);
+  return (h >>> 0).toString(36);
+}
+function getStoredHash() {
+  return localStorage.getItem(PW_KEY) || hashPw(DEFAULT_PW);
+}
+function checkPassword() {
+  const val = document.getElementById('lockInput').value;
+  const input = document.getElementById('lockInput');
+  const err = document.getElementById('lockError');
+  if (!val) { err.textContent = 'Bitte ein Passwort eingeben.'; return; }
+  if (hashPw(val) === getStoredHash()) {
+    sessionStorage.setItem(SESSION_KEY, '1');
+    document.getElementById('lockScreen').classList.add('hidden');
+    err.textContent = ''; input.value = '';
+  } else {
+    input.classList.add('error');
+    err.textContent = 'Falsches Passwort. Bitte erneut versuchen.';
+    setTimeout(() => input.classList.remove('error'), 400);
+  }
+}
+function togglePwVisible() {
+  const inp = document.getElementById('lockInput');
+  const eye = document.getElementById('lockEye');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  eye.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
 
+// ── Unlock with file (NEW) ──────────────────────────────
+function unlockWithFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      // 1. Adopt password hash from file so this device uses the same password
+      if (data.pwHash) localStorage.setItem(PW_KEY, data.pwHash);
+      // 2. Unlock
+      sessionStorage.setItem(SESSION_KEY, '1');
+      document.getElementById('lockScreen').classList.add('hidden');
+      // 3. Merge data
+      const imported = data.campsites || data;
+      if (Array.isArray(imported) && imported.length > 0) {
+        const existingIds = new Set(campsites.map(c => c.id));
+        const newOnes = imported.filter(c => !existingIds.has(c.id));
+        const updatedOnes = imported.filter(c => {
+          const ex = campsites.find(x => x.id === c.id);
+          return ex && c.updatedAt > ex.updatedAt;
+        });
+        updatedOnes.forEach(c => {
+          const idx = campsites.findIndex(x => x.id === c.id);
+          if (idx !== -1) campsites[idx] = c;
+        });
+        campsites = [...campsites, ...newOnes];
+        localStorage.setItem('campsites', JSON.stringify(campsites));
+        renderAll();
+        const total = newOnes.length + updatedOnes.length;
+        showToast(total > 0
+          ? `✅ Entsperrt · ${newOnes.length} neu, ${updatedOnes.length} aktualisiert`
+          : '✅ Entsperrt – Daten bereits aktuell');
+      } else {
+        showToast('✅ Entsperrt');
+      }
+    } catch(err) {
+      document.getElementById('lockError').textContent = '❌ Datei ungültig: ' + err.message;
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function openChangePw() {
+  document.getElementById('pwOld').value = '';
+  document.getElementById('pwNew1').value = '';
+  document.getElementById('pwNew2').value = '';
+  document.getElementById('pwModalError').textContent = '';
+  document.getElementById('pwModal').classList.add('open');
+}
+function closeChangePw() { document.getElementById('pwModal').classList.remove('open'); }
+function saveNewPassword() {
+  const old = document.getElementById('pwOld').value;
+  const new1 = document.getElementById('pwNew1').value;
+  const new2 = document.getElementById('pwNew2').value;
+  const err = document.getElementById('pwModalError');
+  if (hashPw(old) !== getStoredHash()) { err.textContent = 'Aktuelles Passwort ist falsch.'; return; }
+  if (new1.length < 4) { err.textContent = 'Neues Passwort muss mindestens 4 Zeichen haben.'; return; }
+  if (new1 !== new2) { err.textContent = 'Die neuen Passwörter stimmen nicht überein.'; return; }
+  localStorage.setItem(PW_KEY, hashPw(new1));
+  closeChangePw();
+  showToast('🔑 Passwort geändert! Wird beim nächsten Export mitgespeichert.');
+}
+
+// ── Map ─────────────────────────────────────────────────
+const map = L.map('map', { zoomControl:false }).setView([51.0, 10.5], 6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  maxZoom: 19
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom:19
 }).addTo(map);
+L.control.zoom({ position:'bottomleft' }).addTo(map);
 
-L.control.zoom({ position: 'bottomleft' }).addTo(map);
-
-// ── Pin-Mode ──────────────────────────────────────────
-let pinMode = false;
-let tempMarker = null;
-
+let pinMode = false, tempMarker = null;
 function startPinMode() {
-  // Minimize modal so map is visible
   document.getElementById('modalOverlay').classList.remove('open');
   pinMode = true;
   map.getContainer().classList.add('map-pin-mode');
   document.getElementById('pinModeBanner').classList.add('active');
   showToast('📍 Klicke auf die Karte, um den Standort zu setzen');
 }
-
 function cancelPinMode() {
   pinMode = false;
   map.getContainer().classList.remove('map-pin-mode');
@@ -1545,795 +611,380 @@ function cancelPinMode() {
   if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
   document.getElementById('modalOverlay').classList.add('open');
 }
-
 map.on('click', function(e) {
   if (!pinMode) return;
   const { lat, lng } = e.latlng;
-
-  // Remove old temp marker
   if (tempMarker) map.removeLayer(tempMarker);
-
-  // Place temp marker
-  tempMarker = L.marker([lat, lng], {
-    icon: L.divIcon({
-      html: `<div style="
-        background:#d4603a;color:white;border-radius:50% 50% 50% 0;
-        width:32px;height:32px;display:flex;align-items:center;justify-content:center;
-        font-size:14px;box-shadow:0 3px 10px rgba(0,0,0,0.35);
-        transform:rotate(-45deg);border:2px solid white;">
-        <span style="transform:rotate(45deg)">📍</span></div>`,
-      iconSize: [32,32], iconAnchor: [16,32], className: ''
-    })
-  }).addTo(map);
-
-  // Fill coordinates into form
+  tempMarker = L.marker([lat, lng], { icon: L.divIcon({
+    html: `<div style="background:#d4603a;color:white;border-radius:50% 50% 50% 0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 3px 10px rgba(0,0,0,.35);transform:rotate(-45deg);border:2px solid white"><span style="transform:rotate(45deg)">📍</span></div>`,
+    iconSize:[32,32], iconAnchor:[16,32], className:''
+  })}).addTo(map);
   document.getElementById('inputLat').value = lat.toFixed(6);
   document.getElementById('inputLon').value = lng.toFixed(6);
-
-  // Exit pin mode, re-open modal
   pinMode = false;
   map.getContainer().classList.remove('map-pin-mode');
   document.getElementById('pinModeBanner').classList.remove('active');
-
-  // Update pin button state
   document.getElementById('pinBtn').classList.add('active');
   document.getElementById('pinBtn').textContent = '✅ Standort gesetzt – erneut klicken zum Ändern';
   document.getElementById('pinSetIndicator').classList.add('visible');
-
   document.getElementById('modalOverlay').classList.add('open');
 });
 
-// ── Icons ──────────────────────────────────────────────
 function createIcon(type, revisit) {
   const color = type === 'visited' ? '#2d4a3e' : '#4a7c59';
   const emoji = type === 'visited' ? '🏕️' : '⭐';
-  const ring = revisit ? 'outline: 3px solid #d4603a; outline-offset: 1px;' : '';
+  const ring = revisit ? 'outline:3px solid #d4603a;outline-offset:1px;' : '';
   return L.divIcon({
-    html: `<div style="
-      background:${color};
-      color:white;
-      border-radius:50% 50% 50% 0;
-      width:36px; height:36px;
-      display:flex; align-items:center; justify-content:center;
-      font-size:16px;
-      box-shadow:0 3px 10px rgba(0,0,0,0.3);
-      transform:rotate(-45deg);
-      border: 2px solid white;
-      ${ring}
-    "><span style="transform:rotate(45deg)">${emoji}</span></div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -36],
-    className: ''
+    html: `<div style="background:${color};color:white;border-radius:50% 50% 50% 0;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 3px 10px rgba(0,0,0,.3);transform:rotate(-45deg);border:2px solid white;${ring}"><span style="transform:rotate(45deg)">${emoji}</span></div>`,
+    iconSize:[36,36], iconAnchor:[18,36], popupAnchor:[0,-36], className:''
   });
 }
 
-// ── Render List ────────────────────────────────────────
 function renderAll() {
-  // Update counts
-  document.getElementById('countVisited').textContent =
-    campsites.filter(c => c.type === 'visited').length;
-  document.getElementById('countWishlist').textContent =
-    campsites.filter(c => c.type === 'wishlist').length;
-
-  renderList();
-  renderMarkers();
+  document.getElementById('countVisited').textContent = campsites.filter(c => c.type === 'visited').length;
+  document.getElementById('countWishlist').textContent = campsites.filter(c => c.type === 'wishlist').length;
+  renderList(); renderMarkers();
 }
-
-// ── Filter Logic ──────────────────────────────────────
 function buildFilteredList() {
   return campsites.filter(c => {
     if (c.type !== currentTab) return false;
-    if (filterSearch && !c.name.toLowerCase().includes(filterSearch.toLowerCase()) &&
-        !(c.location || '').toLowerCase().includes(filterSearch.toLowerCase())) return false;
+    if (filterSearch && !c.name.toLowerCase().includes(filterSearch.toLowerCase()) && !(c.location||'').toLowerCase().includes(filterSearch.toLowerCase())) return false;
     if (filterYear && (!c.date || !c.date.startsWith(filterYear))) return false;
-    if (filterCountry && !(c.location || '').toLowerCase().includes(filterCountry.toLowerCase())) return false;
+    if (filterCountry && !(c.location||'').toLowerCase().includes(filterCountry.toLowerCase())) return false;
     if (filterRevisit && !c.revisit) return false;
     if (filterWorkation && !c.workation) return false;
     return true;
   });
 }
-
 function applyFilters() {
-  filterSearch  = document.getElementById('searchInput').value.trim();
-  filterYear    = document.getElementById('filterYear').value;
+  filterSearch = document.getElementById('searchInput').value.trim();
+  filterYear = document.getElementById('filterYear').value;
   filterCountry = document.getElementById('filterCountry').value;
   renderList();
 }
-
 function toggleChip(flag) {
-  if (flag === 'revisit') {
-    filterRevisit = !filterRevisit;
-    document.getElementById('chipRevisit').classList.toggle('active', filterRevisit);
-  } else {
-    filterWorkation = !filterWorkation;
-    document.getElementById('chipWorkation').classList.toggle('active', filterWorkation);
-  }
+  if (flag === 'revisit') { filterRevisit = !filterRevisit; document.getElementById('chipRevisit').classList.toggle('active', filterRevisit); }
+  else { filterWorkation = !filterWorkation; document.getElementById('chipWorkation').classList.toggle('active', filterWorkation); }
   renderList();
 }
-
 function clearFilters() {
-  filterSearch = ''; filterYear = ''; filterCountry = '';
-  filterRevisit = false; filterWorkation = false;
-  document.getElementById('searchInput').value = '';
-  document.getElementById('filterYear').value = '';
-  document.getElementById('filterCountry').value = '';
+  filterSearch = ''; filterYear = ''; filterCountry = ''; filterRevisit = false; filterWorkation = false;
+  ['searchInput','filterYear','filterCountry'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('chipRevisit').classList.remove('active');
   document.getElementById('chipWorkation').classList.remove('active');
   renderList();
 }
-
 function populateFilterOptions() {
   const inTab = campsites.filter(c => c.type === currentTab);
-
-  // Years
   const years = [...new Set(inTab.map(c => c.date?.slice(0,4)).filter(Boolean))].sort().reverse();
   const yearSel = document.getElementById('filterYear');
   const curYear = yearSel.value;
-  yearSel.innerHTML = '<option value="">📅 Alle Jahre</option>' +
-    years.map(y => `<option value="${y}" ${y===curYear?'selected':''}>${y}</option>`).join('');
-
-  // Countries (first word-group of location)
-  const countries = [...new Set(inTab.map(c => {
-    if (!c.location) return null;
-    // take text after last comma, or full string if no comma
-    const parts = c.location.split(',');
-    return parts[parts.length - 1].trim();
-  }).filter(Boolean))].sort();
+  yearSel.innerHTML = '<option value="">📅 Alle Jahre</option>' + years.map(y => `<option value="${y}" ${y===curYear?'selected':''}>${y}</option>`).join('');
+  const countries = [...new Set(inTab.map(c => { if(!c.location) return null; const p=c.location.split(','); return p[p.length-1].trim(); }).filter(Boolean))].sort();
   const countrySel = document.getElementById('filterCountry');
   const curCountry = countrySel.value;
-  countrySel.innerHTML = '<option value="">📍 Alle Länder</option>' +
-    countries.map(cn => `<option value="${cn}" ${cn===curCountry?'selected':''}>${cn}</option>`).join('');
+  countrySel.innerHTML = '<option value="">📍 Alle Länder</option>' + countries.map(cn => `<option value="${cn}" ${cn===curCountry?'selected':''}>${cn}</option>`).join('');
 }
-
 function renderList() {
   populateFilterOptions();
   const list = document.getElementById('siteList');
   const all = campsites.filter(c => c.type === currentTab);
   const filtered = buildFilteredList();
-  const hasActiveFilter = filterSearch || filterYear || filterCountry || filterRevisit || filterWorkation;
-
-  // Filter count hint
-  const countEl = document.getElementById('filterCount');
-  if (hasActiveFilter) {
-    countEl.textContent = `${filtered.length} von ${all.length} Campingplätzen`;
-  } else {
-    countEl.textContent = '';
-  }
-
+  const hasFilter = filterSearch||filterYear||filterCountry||filterRevisit||filterWorkation;
+  document.getElementById('filterCount').textContent = hasFilter ? `${filtered.length} von ${all.length} Campingplätzen` : '';
   if (all.length === 0) {
-    const msg = currentTab === 'visited'
-      ? 'Noch keine besuchten Campingplätze.<br>Füge deinen ersten hinzu!'
-      : 'Noch keine Wünsche gespeichert.<br>Markiere Plätze, die du besuchen möchtest!';
-    list.innerHTML = `<div class="empty-state">
-      <div class="icon">${currentTab === 'visited' ? '🏕️' : '⭐'}</div>
-      <p>${msg}</p>
-    </div>`;
+    const msg = currentTab==='visited' ? 'Noch keine besuchten Campingplätze.<br>Füge deinen ersten hinzu!' : 'Noch keine Wünsche gespeichert.<br>Markiere Plätze, die du besuchen möchtest!';
+    list.innerHTML = `<div class="empty-state"><div class="icon">${currentTab==='visited'?'🏕️':'⭐'}</div><p>${msg}</p></div>`;
     return;
   }
-
   if (filtered.length === 0) {
-    list.innerHTML = `<div class="empty-state">
-      <div class="icon">🔍</div>
-      <p>Keine Campingplätze gefunden.<br>Filter anpassen oder <span style="color:var(--ember);cursor:pointer" onclick="clearFilters()">zurücksetzen</span>.</p>
-    </div>`;
+    list.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Keine Campingplätze gefunden.<br>Filter anpassen oder <span style="color:var(--ember);cursor:pointer" onclick="clearFilters()">zurücksetzen</span>.</p></div>`;
     return;
   }
-
   list.innerHTML = filtered.map(c => `
-    <div class="camp-card ${activeMarkerId === c.id ? 'active' : ''}"
-         id="card-${c.id}" onclick="focusCampsite('${c.id}')">
+    <div class="camp-card ${activeMarkerId===c.id?'active':''}" id="card-${c.id}" onclick="focusCampsite('${c.id}')">
       <div class="card-top">
         <div class="card-name">${escHtml(c.name)}</div>
         <div class="card-actions">
-          <button class="icon-btn" title="Bearbeiten" onclick="event.stopPropagation(); editCampsite('${c.id}')">✏️</button>
-          <button class="icon-btn" title="Löschen" onclick="event.stopPropagation(); deleteCampsite('${c.id}')">🗑️</button>
+          <button class="icon-btn" onclick="event.stopPropagation();editCampsite('${c.id}')">✏️</button>
+          <button class="icon-btn" onclick="event.stopPropagation();deleteCampsite('${c.id}')">🗑️</button>
         </div>
       </div>
       <div class="card-meta">
-        ${c.location ? `<span>📍 ${escHtml(c.location)}</span>` : ''}
-        ${c.date ? `<span>📅 ${formatDate(c.date)}</span>` : ''}
+        ${c.location?`<span>📍 ${escHtml(c.location)}</span>`:''}
+        ${c.date?`<span>📅 ${formatDate(c.date)}</span>`:''}
       </div>
-      ${c.type === 'visited' && (c.ratings?.lage || c.ratings?.preis || c.ratings?.sauberkeit) ? `
-        <div class="criteria-stars">
-          ${c.ratings.lage ? `<div class="criteria-row-small"><span class="clabel">🌄 Lage</span><span class="stars">${renderStars(c.ratings.lage)}</span></div>` : ''}
-          ${c.ratings.preis ? `<div class="criteria-row-small"><span class="clabel">💶 Preis</span><span class="stars">${renderStars(c.ratings.preis)}</span></div>` : ''}
-          ${c.ratings.sauberkeit ? `<div class="criteria-row-small"><span class="clabel">🧹 Sauberkeit</span><span class="stars">${renderStars(c.ratings.sauberkeit)}</span></div>` : ''}
-        </div>` : ''}
+      ${c.type==='visited'&&(c.ratings?.lage||c.ratings?.preis||c.ratings?.sauberkeit)?`<div class="criteria-stars">
+        ${c.ratings.lage?`<div class="criteria-row-small"><span class="clabel">🌄 Lage</span><span class="stars">${renderStars(c.ratings.lage)}</span></div>`:''}
+        ${c.ratings.preis?`<div class="criteria-row-small"><span class="clabel">💶 Preis</span><span class="stars">${renderStars(c.ratings.preis)}</span></div>`:''}
+        ${c.ratings.sauberkeit?`<div class="criteria-row-small"><span class="clabel">🧹 Sauberkeit</span><span class="stars">${renderStars(c.ratings.sauberkeit)}</span></div>`:''}
+      </div>`:''}
       <div style="display:flex;flex-wrap:wrap;gap:0">
-        ${c.revisit ? `<div class="revisit-badge">🔁 Wiederbesuchen</div>` : ''}
-        ${c.workation ? `<div class="workation-badge">💻 Workation</div>` : ''}
+        ${c.revisit?'<div class="revisit-badge">🔁 Wiederbesuchen</div>':''}
+        ${c.workation?'<div class="workation-badge">💻 Workation</div>':''}
       </div>
-      ${c.website ? `<div class="card-website"><a href="${escHtml(c.website)}" target="_blank" rel="noopener">🌐 ${escHtml(c.website.replace(/^https?:\/\//, ''))}</a></div>` : ''}
-      ${c.notes ? `<div class="card-note">${escHtml(c.notes)}</div>` : ''}
-    </div>
-  `).join('');
+      ${c.website?`<div class="card-website"><a href="${escHtml(c.website)}" target="_blank" rel="noopener">🌐 ${escHtml(c.website.replace(/^https?:\/\//,''))}</a></div>`:''}
+      ${c.notes?`<div class="card-note">${escHtml(c.notes)}</div>`:''}
+    </div>`).join('');
 }
-
 function renderMarkers() {
-  // Clear old markers
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
-
   campsites.forEach(c => {
     if (!c.lat || !c.lon) return;
-    const marker = L.marker([c.lat, c.lon], { icon: createIcon(c.type, c.revisit) })
-      .addTo(map)
-      .bindPopup(buildPopup(c));
-    marker.on('click', () => {
-      activeMarkerId = c.id;
-      renderList();
-      scrollToCard(c.id);
-    });
+    const marker = L.marker([c.lat, c.lon], { icon: createIcon(c.type, c.revisit) }).addTo(map).bindPopup(buildPopup(c));
+    marker.on('click', () => { activeMarkerId=c.id; renderList(); scrollToCard(c.id); });
     markers[c.id] = marker;
   });
 }
-
 function buildPopup(c) {
-  const hasRatings = c.ratings && (c.ratings.lage || c.ratings.preis || c.ratings.sauberkeit);
+  const hasR = c.ratings && (c.ratings.lage||c.ratings.preis||c.ratings.sauberkeit);
   return `<div class="popup-content">
     <div class="popup-name">${escHtml(c.name)}</div>
-    <div class="popup-meta">
-      ${c.location ? c.location + ' · ' : ''}
-      ${c.date ? formatDate(c.date) : ''}
-    </div>
-    ${hasRatings ? `<div style="margin-bottom:7px;font-size:0.78rem;display:flex;flex-direction:column;gap:2px">
-      ${c.ratings.lage ? `<div style="display:flex;align-items:center;gap:5px"><span style="width:72px;color:#888">🌄 Lage</span><span>${renderStars(c.ratings.lage)}</span></div>` : ''}
-      ${c.ratings.preis ? `<div style="display:flex;align-items:center;gap:5px"><span style="width:72px;color:#888">💶 Preis</span><span>${renderStars(c.ratings.preis)}</span></div>` : ''}
-      ${c.ratings.sauberkeit ? `<div style="display:flex;align-items:center;gap:5px"><span style="width:72px;color:#888">🧹 Sauberkeit</span><span>${renderStars(c.ratings.sauberkeit)}</span></div>` : ''}
-    </div>` : ''}
-    ${c.revisit ? `<div style="font-size:0.75rem;color:#d4603a;margin-bottom:4px;font-weight:500">🔁 Wiederbesuchen geplant</div>` : ''}
-    ${c.workation ? `<div style="font-size:0.75rem;color:#3a5fd4;margin-bottom:4px;font-weight:500">💻 Workation geeignet</div>` : ''}
-    ${c.website ? `<div style="font-size:0.78rem;margin-bottom:6px"><a href="${escHtml(c.website)}" target="_blank" rel="noopener" style="color:#4a7c59;text-decoration:none">🌐 Website besuchen ↗</a></div>` : ''}
-    ${c.notes ? `<div class="popup-note">${escHtml(c.notes)}</div>` : ''}
+    <div class="popup-meta">${c.location?c.location+' · ':''}${c.date?formatDate(c.date):''}</div>
+    ${hasR?`<div style="margin-bottom:7px;font-size:.78rem;display:flex;flex-direction:column;gap:2px">
+      ${c.ratings.lage?`<div style="display:flex;align-items:center;gap:5px"><span style="width:72px;color:#888">🌄 Lage</span><span>${renderStars(c.ratings.lage)}</span></div>`:''}
+      ${c.ratings.preis?`<div style="display:flex;align-items:center;gap:5px"><span style="width:72px;color:#888">💶 Preis</span><span>${renderStars(c.ratings.preis)}</span></div>`:''}
+      ${c.ratings.sauberkeit?`<div style="display:flex;align-items:center;gap:5px"><span style="width:72px;color:#888">🧹 Sauberkeit</span><span>${renderStars(c.ratings.sauberkeit)}</span></div>`:''}
+    </div>`:''}
+    ${c.revisit?'<div style="font-size:.75rem;color:#d4603a;margin-bottom:4px;font-weight:500">🔁 Wiederbesuchen geplant</div>':''}
+    ${c.workation?'<div style="font-size:.75rem;color:#3a5fd4;margin-bottom:4px;font-weight:500">💻 Workation geeignet</div>':''}
+    ${c.website?`<div style="font-size:.78rem;margin-bottom:6px"><a href="${escHtml(c.website)}" target="_blank" rel="noopener" style="color:#4a7c59;text-decoration:none">🌐 Website besuchen ↗</a></div>`:''}
+    ${c.notes?`<div class="popup-note">${escHtml(c.notes)}</div>`:''}
     <div class="popup-actions">
-      <button class="popup-btn" style="background:#2d4a3e;color:white"
-        onclick="editCampsite('${c.id}')">✏️ Bearbeiten</button>
-      <button class="popup-btn" style="background:#fee;color:#c00"
-        onclick="deleteCampsite('${c.id}')">🗑️ Löschen</button>
+      <button class="popup-btn" style="background:#2d4a3e;color:white" onclick="editCampsite('${c.id}')">✏️ Bearbeiten</button>
+      <button class="popup-btn" style="background:#fee;color:#c00" onclick="deleteCampsite('${c.id}')">🗑️ Löschen</button>
     </div>
   </div>`;
 }
-
-function renderStars(rating) {
-  return [1,2,3,4,5].map(i =>
-    `<span class="star ${i <= rating ? 'filled' : ''}">★</span>`
-  ).join('');
-}
-
-// ── Focus ──────────────────────────────────────────────
+function renderStars(r) { return [1,2,3,4,5].map(i=>`<span class="star ${i<=r?'filled':''}">★</span>`).join(''); }
 function focusCampsite(id) {
-  const c = campsites.find(x => x.id === id);
-  if (!c) return;
-  activeMarkerId = id;
-  renderList();
-  if (c.lat && c.lon) {
-    map.flyTo([c.lat, c.lon], 13, { duration: 1.2 });
-    setTimeout(() => markers[id]?.openPopup(), 1300);
-  }
+  const c = campsites.find(x => x.id===id); if(!c) return;
+  activeMarkerId = id; renderList();
+  if (c.lat && c.lon) { map.flyTo([c.lat,c.lon],13,{duration:1.2}); setTimeout(()=>markers[id]?.openPopup(),1300); }
 }
-
-function scrollToCard(id) {
-  const el = document.getElementById('card-' + id);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-// ── Tabs ──────────────────────────────────────────────
+function scrollToCard(id) { const el=document.getElementById('card-'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'}); }
 function switchTab(tab) {
-  currentTab = tab;
-  activeMarkerId = null;
-  // Reset year/country filters when switching tabs (they're tab-specific)
-  filterYear = ''; filterCountry = '';
-  document.getElementById('filterYear').value = '';
-  document.getElementById('filterCountry').value = '';
-  document.getElementById('tabVisited').classList.toggle('active', tab === 'visited');
-  document.getElementById('tabWishlist').classList.toggle('active', tab === 'wishlist');
+  currentTab=tab; activeMarkerId=null; filterYear=''; filterCountry='';
+  document.getElementById('filterYear').value=''; document.getElementById('filterCountry').value='';
+  document.getElementById('tabVisited').classList.toggle('active',tab==='visited');
+  document.getElementById('tabWishlist').classList.toggle('active',tab==='wishlist');
   renderList();
 }
-
-// ── Modal ──────────────────────────────────────────────
 function openAddModal() {
-  editingId = null;
-  currentRatings = { lage: 0, preis: 0, sauberkeit: 0 };
-  currentRevisit = false;
-  currentType = 'visited';
-  document.getElementById('modalTitle').textContent = 'Neuer Campingplatz';
-  document.getElementById('inputName').value = '';
-  document.getElementById('inputLat').value = '';
-  document.getElementById('inputLon').value = '';
-  document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
-  document.getElementById('inputLocation').value = '';
-  document.getElementById('inputNotes').value = '';
-  document.getElementById('gpsResult').style.display = 'none';
-  document.getElementById('inputWebsite').value = '';
-  document.getElementById('gmapsPaste').value = '';
-  document.getElementById('gmapsResult').className = 'gmaps-parse-result';
-  resetPinUI();
-  if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
-  currentWorkation = false;
-  updateAllStarUI();
-  updateRevisitUI();
-  updateWorkationUI();
-  setType('visited');
+  editingId=null; currentRatings={lage:0,preis:0,sauberkeit:0}; currentRevisit=false; currentWorkation=false; currentType='visited';
+  document.getElementById('modalTitle').textContent='Neuer Campingplatz';
+  ['inputName','inputLat','inputLon','inputLocation','inputNotes','inputWebsite','gmapsPaste'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('inputDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('gpsResult').style.display='none';
+  document.getElementById('gmapsResult').className='gmaps-parse-result';
+  resetPinUI(); if(tempMarker){map.removeLayer(tempMarker);tempMarker=null;}
+  updateAllStarUI(); updateRevisitUI(); updateWorkationUI(); setType('visited');
   document.getElementById('modalOverlay').classList.add('open');
 }
-
 function editCampsite(id) {
-  const c = campsites.find(x => x.id === id);
-  if (!c) return;
-  editingId = id;
-  currentRatings = c.ratings ? { ...c.ratings } : { lage: 0, preis: 0, sauberkeit: 0 };
-  currentRevisit = c.revisit || false;
-  currentType = c.type;
-  document.getElementById('modalTitle').textContent = 'Campingplatz bearbeiten';
-  document.getElementById('inputName').value = c.name;
-  document.getElementById('inputLat').value = c.lat || '';
-  document.getElementById('inputLon').value = c.lon || '';
-  document.getElementById('inputDate').value = c.date || '';
-  document.getElementById('inputLocation').value = c.location || '';
-  document.getElementById('inputNotes').value = c.notes || '';
-  document.getElementById('inputWebsite').value = c.website || '';
-  document.getElementById('gpsResult').style.display = 'none';
-  document.getElementById('gmapsPaste').value = '';
-  document.getElementById('gmapsResult').className = 'gmaps-parse-result';
-  currentWorkation = c.workation || false;
-  resetPinUI();
-  updateAllStarUI();
-  updateRevisitUI();
-  updateWorkationUI();
-  setType(c.type);
+  const c=campsites.find(x=>x.id===id); if(!c) return;
+  editingId=id; currentRatings=c.ratings?{...c.ratings}:{lage:0,preis:0,sauberkeit:0};
+  currentRevisit=c.revisit||false; currentWorkation=c.workation||false; currentType=c.type;
+  document.getElementById('modalTitle').textContent='Campingplatz bearbeiten';
+  document.getElementById('inputName').value=c.name;
+  document.getElementById('inputLat').value=c.lat||'';
+  document.getElementById('inputLon').value=c.lon||'';
+  document.getElementById('inputDate').value=c.date||'';
+  document.getElementById('inputLocation').value=c.location||'';
+  document.getElementById('inputNotes').value=c.notes||'';
+  document.getElementById('inputWebsite').value=c.website||'';
+  document.getElementById('gpsResult').style.display='none';
+  document.getElementById('gmapsPaste').value='';
+  document.getElementById('gmapsResult').className='gmaps-parse-result';
+  resetPinUI(); updateAllStarUI(); updateRevisitUI(); updateWorkationUI(); setType(c.type);
   document.getElementById('modalOverlay').classList.add('open');
 }
-
 function resetPinUI() {
-  const btn = document.getElementById('pinBtn');
-  btn.classList.remove('active');
-  btn.innerHTML = '📍 Standort auf der Karte setzen';
+  const btn=document.getElementById('pinBtn');
+  btn.classList.remove('active'); btn.innerHTML='📍 Standort auf der Karte setzen';
   document.getElementById('pinSetIndicator').classList.remove('visible');
 }
-
-function closeModal() {
-  document.getElementById('modalOverlay').classList.remove('open');
-  // If pin mode was active when modal closed by other means, cancel it
-  if (pinMode) cancelPinMode();
-}
-
-function handleOverlayClick(e) {
-  if (e.target === document.getElementById('modalOverlay')) closeModal();
-}
-
-// ── Type Toggle ────────────────────────────────────────
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); if(pinMode) cancelPinMode(); }
+function handleOverlayClick(e) { if(e.target===document.getElementById('modalOverlay')) closeModal(); }
 function setType(type) {
-  currentType = type;
-  document.getElementById('typeVisited').classList.toggle('active', type === 'visited');
-  document.getElementById('typeWishlist').classList.toggle('active', type === 'wishlist');
-  const show = type === 'visited' ? 'block' : 'none';
-  document.getElementById('ratingGroup').style.display = show;
-  document.getElementById('revisitGroup').style.display = show;
+  currentType=type;
+  document.getElementById('typeVisited').classList.toggle('active',type==='visited');
+  document.getElementById('typeWishlist').classList.toggle('active',type==='wishlist');
+  const show=type==='visited'?'block':'none';
+  document.getElementById('ratingGroup').style.display=show;
+  document.getElementById('revisitGroup').style.display=show;
 }
-
-// ── Rating ─────────────────────────────────────────────
-function setRating(criterion, n) {
-  currentRatings[criterion] = n;
-  updateStarRow(criterion);
+function setRating(c,n) { currentRatings[c]=n; updateStarRow(c); }
+function updateStarRow(c) {
+  const m={lage:'starLage',preis:'starPreis',sauberkeit:'starSauberkeit'};
+  const v=currentRatings[c];
+  document.querySelectorAll(`#${m[c]} .star`).forEach((el,i)=>{ el.style.color=i<v?'var(--gold)':'#ddd'; });
 }
-
-function updateStarRow(criterion) {
-  const idMap = { lage: 'starLage', preis: 'starPreis', sauberkeit: 'starSauberkeit' };
-  const val = currentRatings[criterion];
-  document.querySelectorAll(`#${idMap[criterion]} .star`).forEach((el, i) => {
-    el.style.color = i < val ? 'var(--gold)' : '#ddd';
-  });
-}
-
-function updateAllStarUI() {
-  ['lage','preis','sauberkeit'].forEach(updateStarRow);
-}
-
-// ── Revisit ────────────────────────────────────────────
-function toggleRevisit() {
-  currentRevisit = !currentRevisit;
-  updateRevisitUI();
-}
-function updateRevisitUI() {
-  const toggle = document.getElementById('revisitToggle');
-  toggle.classList.toggle('active', currentRevisit);
-}
-
-// ── Workation ──────────────────────────────────────────
-function toggleWorkation() {
-  currentWorkation = !currentWorkation;
-  updateWorkationUI();
-}
-function updateWorkationUI() {
-  const toggle = document.getElementById('workationToggle');
-  toggle.classList.toggle('active', currentWorkation);
-}
-
-// ── Google Maps Koordinaten parsen ────────────────────
-function parseGmapsCoords(raw) {
-  const resultEl = document.getElementById('gmapsResult');
-  const val = raw.trim();
-  if (!val) { resultEl.className = 'gmaps-parse-result'; return; }
-
-  // Formats supported:
-  // "48.137154, 11.576124"          → decimal, comma-separated
-  // "48.137154 11.576124"           → decimal, space-separated
-  // "48° 8' 13.75" N 11° 34' 34.05" E"  → DMS
-  // Google Maps URL containing @lat,lon
-  // "geo:48.137154,11.576124"
-
-  let lat = null, lon = null;
-
-  // 1. Try Google Maps URL (@lat,lon,zoom)
-  const urlMatch = val.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (urlMatch) {
-    lat = parseFloat(urlMatch[1]);
-    lon = parseFloat(urlMatch[2]);
-  }
-
-  // 2. Try plain decimal "lat, lon" or "lat lon" (with optional °)
-  if (lat === null) {
-    const decMatch = val.replace(/°/g,'').match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
-    if (decMatch) {
-      lat = parseFloat(decMatch[1]);
-      lon = parseFloat(decMatch[2]);
-    }
-  }
-
-  // 3. Try DMS: 48° 8' 13.75" N 11° 34' 34.05" E
-  if (lat === null) {
-    const dmsMatch = val.match(
-      /(\d+)[°\s]+(\d+)['\s]+(\d+\.?\d*)["\s]*([NS])[,\s]+(\d+)[°\s]+(\d+)['\s]+(\d+\.?\d*)["\s]*([EW])/i
-    );
-    if (dmsMatch) {
-      const dms2dec = (d,m,s,ref) => {
-        let v = parseFloat(d) + parseFloat(m)/60 + parseFloat(s)/3600;
-        return (ref==='S'||ref==='W') ? -v : v;
-      };
-      lat = dms2dec(dmsMatch[1],dmsMatch[2],dmsMatch[3],dmsMatch[4].toUpperCase());
-      lon = dms2dec(dmsMatch[5],dmsMatch[6],dmsMatch[7],dmsMatch[8].toUpperCase());
-    }
-  }
-
-  // 4. geo: URI
-  if (lat === null) {
-    const geoMatch = val.match(/geo:(-?\d+\.?\d*),(-?\d+\.?\d*)/i);
-    if (geoMatch) {
-      lat = parseFloat(geoMatch[1]);
-      lon = parseFloat(geoMatch[2]);
-    }
-  }
-
-  if (lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon) &&
-      lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
-    document.getElementById('inputLat').value = lat.toFixed(6);
-    document.getElementById('inputLon').value = lon.toFixed(6);
-    resultEl.className = 'gmaps-parse-result success';
-    resultEl.textContent = `✅ Erkannt: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-  } else {
-    resultEl.className = 'gmaps-parse-result error';
-    resultEl.textContent = '⚠️ Format nicht erkannt – versuche: 48.1374, 11.5755';
-  }
-}
-
-// ── EXIF / GPS ─────────────────────────────────────────
+function updateAllStarUI() { ['lage','preis','sauberkeit'].forEach(updateStarRow); }
+function toggleRevisit() { currentRevisit=!currentRevisit; updateRevisitUI(); }
+function updateRevisitUI() { document.getElementById('revisitToggle').classList.toggle('active',currentRevisit); }
+function toggleWorkation() { currentWorkation=!currentWorkation; updateWorkationUI(); }
+function updateWorkationUI() { document.getElementById('workationToggle').classList.toggle('active',currentWorkation); }
 function readExif(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const resultEl = document.getElementById('gpsResult');
-  resultEl.style.display = 'block';
-  resultEl.className = 'gps-result';
-  resultEl.textContent = '⏳ GPS-Daten werden ausgelesen…';
-
+  const file=event.target.files[0]; if(!file) return;
+  const el=document.getElementById('gpsResult');
+  el.style.display='block'; el.className='gps-result'; el.textContent='⏳ GPS-Daten werden ausgelesen…';
   EXIF.getData(file, function() {
-    const lat = EXIF.getTag(this, 'GPSLatitude');
-    const latRef = EXIF.getTag(this, 'GPSLatitudeRef');
-    const lon = EXIF.getTag(this, 'GPSLongitude');
-    const lonRef = EXIF.getTag(this, 'GPSLongitudeRef');
-
-    if (lat && lon) {
-      const latDec = toDecimal(lat, latRef);
-      const lonDec = toDecimal(lon, lonRef);
-      document.getElementById('inputLat').value = latDec.toFixed(6);
-      document.getElementById('inputLon').value = lonDec.toFixed(6);
-      resultEl.className = 'gps-result success';
-      resultEl.textContent = `✅ GPS gefunden: ${latDec.toFixed(5)}, ${lonDec.toFixed(5)}`;
-
-      // Try to get date from EXIF
-      const dateTime = EXIF.getTag(this, 'DateTimeOriginal');
-      if (dateTime && !document.getElementById('inputDate').value) {
-        const parts = dateTime.split(' ')[0].split(':');
-        document.getElementById('inputDate').value = `${parts[0]}-${parts[1]}-${parts[2]}`;
-      }
-    } else {
-      resultEl.className = 'gps-result warn';
-      resultEl.textContent = '⚠️ Keine GPS-Daten gefunden. Bitte Koordinaten manuell eingeben.';
-    }
+    const lat=EXIF.getTag(this,'GPSLatitude'),latRef=EXIF.getTag(this,'GPSLatitudeRef');
+    const lon=EXIF.getTag(this,'GPSLongitude'),lonRef=EXIF.getTag(this,'GPSLongitudeRef');
+    if(lat&&lon) {
+      const ld=toDecimal(lat,latRef),lo=toDecimal(lon,lonRef);
+      document.getElementById('inputLat').value=ld.toFixed(6);
+      document.getElementById('inputLon').value=lo.toFixed(6);
+      el.className='gps-result success'; el.textContent=`✅ GPS gefunden: ${ld.toFixed(5)}, ${lo.toFixed(5)}`;
+      const dt=EXIF.getTag(this,'DateTimeOriginal');
+      if(dt&&!document.getElementById('inputDate').value){const p=dt.split(' ')[0].split(':');document.getElementById('inputDate').value=`${p[0]}-${p[1]}-${p[2]}`;}
+    } else { el.className='gps-result warn'; el.textContent='⚠️ Keine GPS-Daten gefunden.'; }
   });
 }
-
-function toDecimal(dms, ref) {
-  const d = dms[0].numerator / dms[0].denominator;
-  const m = dms[1].numerator / dms[1].denominator;
-  const s = dms[2].numerator / dms[2].denominator;
-  let dec = d + m / 60 + s / 3600;
-  if (ref === 'S' || ref === 'W') dec = -dec;
-  return dec;
+function toDecimal(dms,ref) {
+  let d=dms[0].numerator/dms[0].denominator,m=dms[1].numerator/dms[1].denominator,s=dms[2].numerator/dms[2].denominator;
+  let v=d+m/60+s/3600; return (ref==='S'||ref==='W')?-v:v;
 }
-
-// ── Save ───────────────────────────────────────────────
+function parseGmapsCoords(raw) {
+  const el=document.getElementById('gmapsResult');
+  const val=raw.trim(); if(!val){el.className='gmaps-parse-result';return;}
+  let lat=null,lon=null;
+  const u=val.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if(u){lat=parseFloat(u[1]);lon=parseFloat(u[2]);}
+  if(lat===null){const d=val.replace(/°/g,'').match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);if(d){lat=parseFloat(d[1]);lon=parseFloat(d[2]);}}
+  if(lat===null){const d=val.match(/(\d+)[°\s]+(\d+)['\s]+(\d+\.?\d*)["\s]*([NS])[,\s]+(\d+)[°\s]+(\d+)['\s]+(\d+\.?\d*)["\s]*([EW])/i);if(d){const f=(a,b,c,r)=>{let v=parseFloat(a)+parseFloat(b)/60+parseFloat(c)/3600;return(r==='S'||r==='W')?-v:v};lat=f(d[1],d[2],d[3],d[4].toUpperCase());lon=f(d[5],d[6],d[7],d[8].toUpperCase());}}
+  if(lat===null){const g=val.match(/geo:(-?\d+\.?\d*),(-?\d+\.?\d*)/i);if(g){lat=parseFloat(g[1]);lon=parseFloat(g[2]);}}
+  if(lat!==null&&lon!==null&&!isNaN(lat)&&!isNaN(lon)&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180){
+    document.getElementById('inputLat').value=lat.toFixed(6);
+    document.getElementById('inputLon').value=lon.toFixed(6);
+    el.className='gmaps-parse-result success';el.textContent=`✅ Erkannt: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  } else {el.className='gmaps-parse-result error';el.textContent='⚠️ Format nicht erkannt – versuche: 48.1374, 11.5755';}
+}
 function saveCampsite() {
-  const name = document.getElementById('inputName').value.trim();
-  if (!name) { showToast('⚠️ Bitte einen Namen eingeben'); return; }
-
-  const latVal = parseFloat(document.getElementById('inputLat').value);
-  const lonVal = parseFloat(document.getElementById('inputLon').value);
-  const hasCoords = !isNaN(latVal) && !isNaN(lonVal);
-
-  const data = {
-    id: editingId || Date.now().toString(),
-    name,
-    type: currentType,
-    lat: hasCoords ? latVal : null,
-    lon: hasCoords ? lonVal : null,
-    date: document.getElementById('inputDate').value,
-    location: document.getElementById('inputLocation').value.trim(),
-    ratings: currentType === 'visited' ? { ...currentRatings } : {},
-    revisit: currentType === 'visited' ? currentRevisit : false,
-    workation: currentWorkation,
-    website: document.getElementById('inputWebsite').value.trim(),
-    notes: document.getElementById('inputNotes').value.trim(),
-    updatedAt: new Date().toISOString()
+  const name=document.getElementById('inputName').value.trim();
+  if(!name){showToast('⚠️ Bitte einen Namen eingeben');return;}
+  const lv=parseFloat(document.getElementById('inputLat').value),lnv=parseFloat(document.getElementById('inputLon').value);
+  const hasC=!isNaN(lv)&&!isNaN(lnv);
+  const data={
+    id:editingId||Date.now().toString(),name,type:currentType,
+    lat:hasC?lv:null,lon:hasC?lnv:null,
+    date:document.getElementById('inputDate').value,
+    location:document.getElementById('inputLocation').value.trim(),
+    ratings:currentType==='visited'?{...currentRatings}:{},
+    revisit:currentType==='visited'?currentRevisit:false,
+    workation:currentWorkation,
+    website:document.getElementById('inputWebsite').value.trim(),
+    notes:document.getElementById('inputNotes').value.trim(),
+    updatedAt:new Date().toISOString()
   };
-
-  if (editingId) {
-    const idx = campsites.findIndex(c => c.id === editingId);
-    if (idx !== -1) campsites[idx] = data;
-  } else {
-    campsites.push(data);
-  }
-
-  // Remove temp pin marker before re-rendering
-  if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
-  save();
-  closeModal();
-  currentTab = data.type;
-  document.getElementById('tabVisited').classList.toggle('active', currentTab === 'visited');
-  document.getElementById('tabWishlist').classList.toggle('active', currentTab === 'wishlist');
+  if(editingId){const i=campsites.findIndex(c=>c.id===editingId);if(i!==-1)campsites[i]=data;}
+  else campsites.push(data);
+  if(tempMarker){map.removeLayer(tempMarker);tempMarker=null;}
+  save(); closeModal();
+  currentTab=data.type;
+  document.getElementById('tabVisited').classList.toggle('active',currentTab==='visited');
+  document.getElementById('tabWishlist').classList.toggle('active',currentTab==='wishlist');
   renderAll();
-  if (hasCoords) {
-    setTimeout(() => focusCampsite(data.id), 400);
-  }
-  showToast(editingId ? '✅ Gespeichert!' : '🏕️ Campingplatz hinzugefügt!');
+  if(hasC) setTimeout(()=>focusCampsite(data.id),400);
+  showToast(editingId?'✅ Gespeichert!':'🏕️ Campingplatz hinzugefügt!');
 }
-
-// ── Delete ─────────────────────────────────────────────
 function deleteCampsite(id) {
-  if (!confirm('Diesen Campingplatz wirklich löschen?')) return;
-  campsites = campsites.filter(c => c.id !== id);
-  if (activeMarkerId === id) activeMarkerId = null;
-  map.closePopup();
-  save();
-  renderAll();
-  showToast('🗑️ Gelöscht');
+  if(!confirm('Diesen Campingplatz wirklich löschen?')) return;
+  campsites=campsites.filter(c=>c.id!==id);
+  if(activeMarkerId===id) activeMarkerId=null;
+  map.closePopup(); save(); renderAll(); showToast('🗑️ Gelöscht');
 }
-
-// ── Persist ────────────────────────────────────────────
 function save() {
-  localStorage.setItem('campsites', JSON.stringify(campsites));
-  if (isAutoExport()) exportData(true);
+  localStorage.setItem('campsites',JSON.stringify(campsites));
+  if(isAutoExport()) exportData(true);
 }
-
-// ── Export/Import ──────────────────────────────────────
-// ── Sidebar (mobile) ───────────────────────────────────
 function toggleSidebar() {
-  const sb = document.getElementById('sidebar');
-  const ov = document.getElementById('sidebarOverlay');
-  const open = sb.classList.toggle('open');
-  ov.classList.toggle('open', open);
+  const sb=document.getElementById('sidebar'),ov=document.getElementById('sidebarOverlay');
+  const open=sb.classList.toggle('open'); ov.classList.toggle('open',open);
 }
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('open');
 }
-
-// ── Sync Panel ──────────────────────────────────────────
-function toggleSyncPanel() {
-  document.getElementById('syncPanel').classList.toggle('open');
-}
-
-// ── Settings persist ────────────────────────────────────
+function toggleSyncPanel() { document.getElementById('syncPanel').classList.toggle('open'); }
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('campingSettings') || '{}');
-  if (s.filename) document.getElementById('syncFilename').value = s.filename;
-  if (s.autoExport !== undefined) document.getElementById('autoExportToggle').checked = s.autoExport;
+  const s=JSON.parse(localStorage.getItem('campingSettings')||'{}');
+  if(s.filename) document.getElementById('syncFilename').value=s.filename;
+  if(s.autoExport!==undefined) document.getElementById('autoExportToggle').checked=s.autoExport;
 }
 function saveSettings() {
-  const s = {
-    filename: document.getElementById('syncFilename').value.trim() || 'meine-campingplaetze',
-    autoExport: document.getElementById('autoExportToggle').checked
-  };
-  localStorage.setItem('campingSettings', JSON.stringify(s));
+  localStorage.setItem('campingSettings',JSON.stringify({
+    filename:document.getElementById('syncFilename').value.trim()||'meine-campingplaetze',
+    autoExport:document.getElementById('autoExportToggle').checked
+  }));
 }
 function getFilename() {
-  const name = (document.getElementById('syncFilename').value.trim() || 'meine-campingplaetze')
-    .replace(/\.json$/i, '');
-  return name + '.json';
+  return (document.getElementById('syncFilename').value.trim()||'meine-campingplaetze').replace(/\.json$/i,'')+'.json';
 }
-function isAutoExport() {
-  return document.getElementById('autoExportToggle').checked;
-}
+function isAutoExport() { return document.getElementById('autoExportToggle').checked; }
 
-// ── Export/Import ──────────────────────────────────────
-function exportData(silent = false) {
+// ── Export – pwHash included ────────────────────────────
+function exportData(silent=false) {
   saveSettings();
-  const json = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), campsites }, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = getFilename();
-  a.click();
+  const json=JSON.stringify({
+    version:1,
+    exportedAt:new Date().toISOString(),
+    pwHash:getStoredHash(),
+    campsites
+  },null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=getFilename(); a.click();
   URL.revokeObjectURL(url);
-  if (!silent) showToast('⬇️ Export: ' + getFilename());
+  if(!silent) showToast('⬇️ Export: '+getFilename());
 }
 
 function importData(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
+  const file=event.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
     try {
-      const data = JSON.parse(e.target.result);
-      const imported = data.campsites || data;
-      if (!Array.isArray(imported)) throw new Error('Ungültiges Format');
-      if (confirm(`${imported.length} Campingplätze importieren? Bestehende Daten werden zusammengeführt.`)) {
-        const existingIds = new Set(campsites.map(c => c.id));
-        const newOnes = imported.filter(c => !existingIds.has(c.id));
-        // Also update existing entries that are newer in the import
-        const updatedOnes = imported.filter(c => {
-          const existing = campsites.find(x => x.id === c.id);
-          return existing && c.updatedAt > existing.updatedAt;
-        });
-        updatedOnes.forEach(c => {
-          const idx = campsites.findIndex(x => x.id === c.id);
-          if (idx !== -1) campsites[idx] = c;
-        });
-        campsites = [...campsites, ...newOnes];
-        save();
-        renderAll();
+      const data=JSON.parse(e.target.result);
+      const imported=data.campsites||data;
+      if(!Array.isArray(imported)) throw new Error('Ungültiges Format');
+      if(confirm(`${imported.length} Campingplätze importieren? Bestehende Daten werden zusammengeführt.`)){
+        const existingIds=new Set(campsites.map(c=>c.id));
+        const newOnes=imported.filter(c=>!existingIds.has(c.id));
+        const updatedOnes=imported.filter(c=>{const ex=campsites.find(x=>x.id===c.id);return ex&&c.updatedAt>ex.updatedAt;});
+        updatedOnes.forEach(c=>{const i=campsites.findIndex(x=>x.id===c.id);if(i!==-1)campsites[i]=c;});
+        campsites=[...campsites,...newOnes];
+        if(data.pwHash) localStorage.setItem(PW_KEY,data.pwHash);
+        save(); renderAll();
         document.getElementById('syncPanel').classList.remove('open');
         showToast(`⬆️ ${newOnes.length} neu, ${updatedOnes.length} aktualisiert`);
       }
-    } catch(err) {
-      showToast('❌ Import fehlgeschlagen: ' + err.message);
-    }
+    } catch(err){showToast('❌ Import fehlgeschlagen: '+err.message);}
   };
-  reader.readAsText(file);
-  event.target.value = '';
+  reader.readAsText(file); event.target.value='';
 }
-
-// ── Close sync panel on outside click ─────────────────
-document.addEventListener('click', function(e) {
-  const panel = document.getElementById('syncPanel');
-  if (!panel.classList.contains('open')) return;
-  if (!panel.contains(e.target) && !e.target.closest('[onclick="toggleSyncPanel()"]')) {
-    panel.classList.remove('open');
-  }
+document.addEventListener('click',function(e){
+  const p=document.getElementById('syncPanel');
+  if(!p.classList.contains('open')) return;
+  if(!p.contains(e.target)&&!e.target.closest('[onclick="toggleSyncPanel()"]')) p.classList.remove('open');
 });
-
-// ── Toast ──────────────────────────────────────────────
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2800);
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
 }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function formatDate(d) { if(!d) return ''; const p=d.split('-'); return `${p[2]}.${p[1]}.${p[0]}`; }
 
-// ── Helpers ────────────────────────────────────────────
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function formatDate(d) {
-  if (!d) return '';
-  const parts = d.split('-');
-  return `${parts[2]}.${parts[1]}.${parts[0]}`;
-}
-
-// ── Password ───────────────────────────────────────────
-const DEFAULT_PW = 'camping123';
-const PW_KEY     = 'campingPwHash';
-const SESSION_KEY = 'campingUnlocked';
-
-function hashPw(pw) {
-  // Simple djb2 hash – good enough for client-side gating
-  let h = 5381;
-  for (let i = 0; i < pw.length; i++) h = (h * 33) ^ pw.charCodeAt(i);
-  return (h >>> 0).toString(36);
-}
-
-function getStoredHash() {
-  return localStorage.getItem(PW_KEY) || hashPw(DEFAULT_PW);
-}
-
-function checkPassword() {
-  const val = document.getElementById('lockInput').value;
-  const input = document.getElementById('lockInput');
-  const err   = document.getElementById('lockError');
-  if (!val) { err.textContent = 'Bitte ein Passwort eingeben.'; return; }
-  if (hashPw(val) === getStoredHash()) {
-    sessionStorage.setItem(SESSION_KEY, '1');
-    document.getElementById('lockScreen').classList.add('hidden');
-    err.textContent = '';
-    document.getElementById('lockInput').value = '';
-  } else {
-    input.classList.add('error');
-    err.textContent = 'Falsches Passwort. Bitte erneut versuchen.';
-    setTimeout(() => input.classList.remove('error'), 400);
-  }
-}
-
-function togglePwVisible() {
-  const inp = document.getElementById('lockInput');
-  const eye = document.getElementById('lockEye');
-  if (inp.type === 'password') { inp.type = 'text'; eye.textContent = '🙈'; }
-  else { inp.type = 'password'; eye.textContent = '👁'; }
-}
-
-function openChangePw() {
-  // Can be opened from lock screen or from within the app (via settings)
-  document.getElementById('pwOld').value = '';
-  document.getElementById('pwNew1').value = '';
-  document.getElementById('pwNew2').value = '';
-  document.getElementById('pwModalError').textContent = '';
-  document.getElementById('pwModal').classList.add('open');
-}
-
-function closeChangePw() {
-  document.getElementById('pwModal').classList.remove('open');
-}
-
-function saveNewPassword() {
-  const old  = document.getElementById('pwOld').value;
-  const new1 = document.getElementById('pwNew1').value;
-  const new2 = document.getElementById('pwNew2').value;
-  const err  = document.getElementById('pwModalError');
-
-  if (hashPw(old) !== getStoredHash()) {
-    err.textContent = 'Aktuelles Passwort ist falsch.'; return;
-  }
-  if (new1.length < 4) {
-    err.textContent = 'Neues Passwort muss mindestens 4 Zeichen haben.'; return;
-  }
-  if (new1 !== new2) {
-    err.textContent = 'Die neuen Passwörter stimmen nicht überein.'; return;
-  }
-  localStorage.setItem(PW_KEY, hashPw(new1));
-  closeChangePw();
-  showToast('🔑 Passwort erfolgreich geändert!');
-}
-
-// ── Init ───────────────────────────────────────────────
-// Check session – if already unlocked this session, skip lock screen
-if (sessionStorage.getItem(SESSION_KEY) === '1') {
-  document.getElementById('lockScreen').classList.add('hidden');
-}
-
-loadSettings();
-renderAll();
-
-// Leaflet braucht nach dem DOM-Aufbau ein invalidateSize
-setTimeout(() => {
+// ── Init ────────────────────────────────────────────────
+if(sessionStorage.getItem(SESSION_KEY)==='1') document.getElementById('lockScreen').classList.add('hidden');
+loadSettings(); renderAll();
+setTimeout(()=>{
   map.invalidateSize();
-  const pts = campsites.filter(c => c.lat && c.lon).map(c => [c.lat, c.lon]);
-  if (pts.length > 0) {
-    map.fitBounds(pts, { padding: [40, 40], maxZoom: 10 });
-  }
-}, 100);
+  const pts=campsites.filter(c=>c.lat&&c.lon).map(c=>[c.lat,c.lon]);
+  if(pts.length>0) map.fitBounds(pts,{padding:[40,40],maxZoom:10});
+},100);
 </script>
 </body>
 </html>

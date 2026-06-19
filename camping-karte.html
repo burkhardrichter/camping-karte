@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Meine Campingplätze</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
+
+<style>
+  :root {
+    --ios-blue:        #007AFF;
+    --ios-green:       #34C759;
+    --ios-orange:      #FF9500;
+    --ios-red:         #FF3B30;
+    --ios-yellow:      #FFCC00;
+    --ios-purple:      #AF52DE;
+    --ios-gray:        #8E8E93;
+    --ios-gray2:       #AEAEB2;
+    --ios-gray3:       #C7C7CC;
+    --ios-gray4:       #D1D1D6;
+    --ios-gray5:       #E5E5EA;
+    --ios-gray6:       #F2F2F7;
+    --bg-primary:      #FFFFFF;
+    --bg-secondary:    #F2F2F7;
+    --label-primary:   #000000;
+    --label-secondary: #3C3C43CC;
+    --separator:       rgba(60,60,67,0.29);
+    --fill3:           rgba(118,118,128,0.12);
+    --fill2:           rgba(120,120,128,0.16);
+    --safe-top:        env(safe-area-inset-top, 0px);
+    --safe-bottom:     env(safe-area-inset-bottom, 0px);
+    --safe-left:       env(safe-area-inset-left, 0px);
+    --safe-right:      env(safe-area-inset-right, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; background: var(--bg-secondary); color: var(--label-primary); height: 100%; overflow: hidden; }
+  body { display: flex; flex-direction: column; padding-top: var(--safe-top); }
+
+  /* ── LOCK SCREEN ── */
+  #lockScreen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(160deg, #1a2e25 0%, #2d4a3e 60%, #1a2e25 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 32px calc(40px + var(--safe-bottom));
+    padding-top: calc(40px + var(--safe-top));
+  }
+  .lock-icon { font-size: 3.5rem; margin-bottom: 16px; }
+  .lock-title { font-size: 1.5rem; font-weight: 700; color: white; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .lock-subtitle { font-size: 0.875rem; color: rgba(255,255,255,0.55); margin-bottom: 40px; }
+  .lock-input-wrap { width: 100%; max-width: 320px; margin-bottom: 14px; position: relative; }
+  .lock-input {
+    width: 100%; padding: 15px 48px 15px 18px;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 13px; color: white; font-size: 1rem;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    outline: none; letter-spacing: 0.05em;
+    -webkit-text-security: disc;
+  }
+  .lock-input::placeholder { color: rgba(255,255,255,0.35); letter-spacing: 0; }
+  .lock-input:focus { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.15); }
+  .lock-eye {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 1.1rem; padding: 4px;
+  }
+  .lock-btn {
+    width: 100%; max-width: 320px; padding: 15px;
+    background: var(--ios-blue); color: white; border: none; border-radius: 13px;
+    font-size: 1rem; font-weight: 600; cursor: pointer; margin-bottom: 12px;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    transition: opacity 0.15s;
+  }
+  .lock-btn:active { opacity: 0.85; }
+  .lock-btn-secondary {
+    background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.8);
+    font-weight: 500; font-size: 0.875rem;
+  }
+  .lock-divider {
+    width: 100%; max-width: 320px; display: flex; align-items: center; gap: 10px;
+    margin: 4px 0 12px;
+  }
+  .lock-divider-line { flex: 1; height: 0.5px; background: rgba(255,255,255,0.15); }
+  .lock-divider-text { font-size: 0.75rem; color: rgba(255,255,255,0.3); }
+  .lock-error { color: #FF6B6B; font-size: 0.82rem; margin-top: 8px; min-height: 20px; text-align: center; }
+  .lock-setup { width: 100%; max-width: 320px; }
+  .lock-setup-hint { font-size: 0.78rem; color: rgba(255,255,255,0.4); text-align: center; margin-top: 8px; line-height: 1.5; }
+  #lockScreen.hidden { display: none; }
+
+  /* ── NAV BAR ── */
+  .nav-bar {
+    background: rgba(242,242,247,0.85);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 0.5px solid var(--separator);
+    padding: 0 16px;
+    height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0; z-index: 100;
+  }
+  .nav-title { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.02em; color: var(--label-primary); display: flex; align-items: center; gap: 7px; }
+  .nav-actions { display: flex; gap: 4px; }
+  .nav-btn {
+    background: none; border: none; cursor: pointer; padding: 8px 10px; border-radius: 10px;
+    font-size: 0.82rem; font-weight: 500; color: var(--ios-blue);
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    display: flex; align-items: center; gap: 4px; transition: background 0.15s; white-space: nowrap;
+  }
+  .nav-btn:active { background: var(--fill3); }
+
+  /* ── LAYOUT ── */
+  .app-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 320px; flex-shrink: 0; background: var(--bg-secondary);
+    display: flex; flex-direction: column; overflow: hidden;
+    border-right: 0.5px solid var(--separator);
+  }
+  .seg-control {
+    margin: 10px 16px; display: flex; background: var(--fill3); border-radius: 9px;
+    padding: 2px; gap: 2px; flex-shrink: 0;
+  }
+  .seg-btn {
+    flex: 1; padding: 6px 4px; border: none; border-radius: 7px; background: transparent;
+    cursor: pointer; font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.78rem; font-weight: 500; color: var(--ios-gray);
+    transition: all 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .seg-btn.active {
+    background: white; color: var(--label-primary); font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.04);
+  }
+  .seg-count { color: white; border-radius: 8px; padding: 1px 5px; font-size: 0.65rem; font-weight: 700; background: var(--ios-gray2); }
+  .seg-btn.active .seg-count { background: var(--ios-blue); }
+
+  /* ── SEARCH BAR ── */
+  .search-wrap {
+    padding: 0 16px 8px; flex-shrink: 0;
+  }
+  .search-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(118,118,128,0.12); border-radius: 10px;
+    padding: 7px 12px;
+  }
+  .search-icon { font-size: 0.9rem; color: var(--ios-gray); flex-shrink: 0; }
+  .search-input {
+    flex: 1; border: none; outline: none; background: transparent;
+    font-size: 0.875rem; color: var(--label-primary);
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  }
+  .search-input::placeholder { color: var(--ios-gray2); }
+  .search-clear {
+    background: var(--ios-gray3); border: none; border-radius: 50%;
+    width: 16px; height: 16px; cursor: pointer; display: none;
+    align-items: center; justify-content: center; font-size: 0.6rem;
+    color: white; font-weight: 700; flex-shrink: 0; padding: 0; line-height: 1;
+  }
+  .search-clear.visible { display: flex; }
+
+  /* ── FILTER AREA ── */
+  .filter-area {
+    padding: 0 16px 10px; flex-shrink: 0; display: flex; flex-direction: column; gap: 7px;
+  }
+  .filter-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .filter-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 11px; border-radius: 16px; border: none; cursor: pointer;
+    font-size: 0.75rem; font-weight: 500; white-space: nowrap;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg-primary); color: var(--ios-gray);
+    border: 0.5px solid var(--separator);
+    transition: all 0.15s;
+  }
+  .filter-chip:active { opacity: 0.75; }
+  .filter-chip.active         { background: var(--ios-blue);   color: white; border-color: var(--ios-blue);   }
+  .filter-chip.active-orange  { background: var(--ios-orange); color: white; border-color: var(--ios-orange); }
+  .filter-chip.active-purple  { background: var(--ios-purple); color: white; border-color: var(--ios-purple); }
+
+  /* Country select */
+  .filter-select-wrap {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-primary); border-radius: 10px;
+    padding: 0 12px; border: 0.5px solid var(--separator); height: 36px;
+  }
+  .filter-select-icon { font-size: 0.85rem; flex-shrink: 0; }
+  .filter-select {
+    flex: 1; border: none; outline: none; background: transparent;
+    font-size: 0.82rem; color: var(--label-primary);
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    appearance: none; -webkit-appearance: none; cursor: pointer; min-width: 0;
+  }
+  .filter-select-arrow { color: var(--ios-gray3); font-size: 0.7rem; flex-shrink: 0; pointer-events: none; }
+  .filter-select-wrap.has-value { border-color: var(--ios-green); background: rgba(52,199,89,0.06); }
+  .filter-select-wrap.has-value .filter-select { color: var(--ios-green); font-weight: 600; }
+
+  .site-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 0 16px; }
+  .site-list::-webkit-scrollbar { display: none; }
+  .list-section-header { font-size: 0.72rem; font-weight: 600; color: var(--ios-gray); text-transform: uppercase; letter-spacing: 0.05em; padding: 18px 20px 6px; }
+
+  .empty-state { text-align: center; padding: 60px 24px 40px; }
+  .empty-state .icon { font-size: 3.5rem; margin-bottom: 12px; display: block; }
+  .empty-state h3 { font-size: 1rem; font-weight: 600; color: var(--ios-gray); margin-bottom: 6px; }
+  .empty-state p { font-size: 0.85rem; color: var(--ios-gray); line-height: 1.5; }
+
+  /* ── CARDS ── */
+  .camp-card {
+    background: var(--bg-primary);
+    margin: 0 16px; cursor: pointer; padding: 12px 14px;
+    transition: background 0.12s; position: relative;
+  }
+  .camp-card + .camp-card::before {
+    content: ''; position: absolute; top: 0; left: 14px; right: 0; height: 0.5px; background: var(--separator);
+  }
+  .camp-card:active { background: #F0F0F5; }
+  .camp-card.active-card { background: #EBF3FF; }
+
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+  .card-name { font-size: 0.9375rem; font-weight: 600; color: var(--label-primary); line-height: 1.3; letter-spacing: -0.01em; }
+  .card-actions { display: flex; gap: 2px; flex-shrink: 0; margin-top: -2px; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; font-size: 1rem; padding: 4px 6px;
+    border-radius: 6px; opacity: 0.4; transition: opacity 0.12s, background 0.12s; line-height: 1;
+  }
+  .icon-btn:active { opacity: 1; background: var(--fill3); }
+
+  .card-meta { font-size: 0.78rem; color: var(--ios-gray); margin-bottom: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .stars { display: flex; gap: 1px; font-size: 0.78rem; }
+  .star { color: var(--ios-gray3); }
+  .star.filled { color: var(--ios-yellow); }
+  .criteria-stars { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+  .criteria-row-small { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--ios-gray); }
+  .criteria-row-small .clabel { width: 68px; flex-shrink: 0; }
+  .card-note { font-size: 0.78rem; color: var(--ios-gray); margin-top: 4px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Card badges */
+  .card-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 0.68rem; border-radius: 6px; padding: 2px 7px; font-weight: 600;
+  }
+  .badge-revisit  { background: rgba(255,149,0,0.12); color: var(--ios-orange); }
+  .badge-workation { background: rgba(175,82,222,0.12); color: var(--ios-purple); }
+
+  /* ── MAP ── */
+  #map { width: 100%; height: 100%; z-index: 1; }
+  .map-wrapper { flex: 1; position: relative; }
+
+  /* ── FAB ── */
+  .fab {
+    position: absolute; bottom: calc(20px + var(--safe-bottom)); right: 16px; z-index: 900;
+    background: var(--ios-blue); color: white; border: none; border-radius: 28px;
+    padding: 14px 20px; font-size: 0.9375rem; font-weight: 600;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    cursor: pointer; box-shadow: 0 4px 16px rgba(0,122,255,0.4), 0 1px 4px rgba(0,0,0,0.15);
+    display: flex; align-items: center; gap: 6px; letter-spacing: -0.01em;
+    transition: all 0.18s cubic-bezier(0.25,0.46,0.45,0.94);
+  }
+  .fab:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(0,122,255,0.3); }
+
+  /* ── SHEET MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 2000;
+    display: flex; align-items: flex-end; padding: 0;
+    opacity: 0; pointer-events: none; transition: opacity 0.28s ease;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--bg-secondary); border-radius: 13px 13px 0 0;
+    width: 100%; max-width: 600px; margin: 0 auto;
+    max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    transform: translateY(100%); transition: transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94);
+    padding-bottom: calc(20px + var(--safe-bottom));
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .sheet-handle { display: flex; justify-content: center; padding: 10px 0 4px; }
+  .sheet-handle::after { content: ''; width: 36px; height: 5px; background: var(--ios-gray3); border-radius: 3px; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px 10px; }
+  .modal-title { font-size: 1.0625rem; font-weight: 700; color: var(--label-primary); letter-spacing: -0.02em; }
+  .modal-close {
+    background: var(--fill3); border: none; width: 30px; height: 30px; border-radius: 50%;
+    cursor: pointer; font-size: 0.95rem; color: var(--ios-gray);
+    display: flex; align-items: center; justify-content: center; font-weight: 600;
+  }
+  .modal-close:active { background: var(--fill2); }
+
+  /* ── FORM (iOS Inset Grouped) ── */
+  .modal-body { padding: 0 0 4px; }
+  .form-section { margin: 0 16px 20px; }
+  .form-section-label { font-size: 0.72rem; font-weight: 600; color: var(--ios-gray); text-transform: uppercase; letter-spacing: 0.05em; padding: 0 4px 6px; }
+  .form-section-content { background: var(--bg-primary); border-radius: 10px; overflow: hidden; }
+  .form-row-ios {
+    display: flex; align-items: center; padding: 11px 14px; min-height: 44px; position: relative;
+  }
+  .form-row-ios + .form-row-ios::before {
+    content: ''; position: absolute; top: 0; left: 14px; right: 0; height: 0.5px; background: var(--separator);
+  }
+  .form-row-ios label { font-size: 0.875rem; font-weight: 400; color: var(--label-primary); flex-shrink: 0; width: 90px; }
+  .form-row-ios.label-wide label { width: 110px; }
+  .form-input-ios {
+    flex: 1; border: none; outline: none; font-size: 0.875rem;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    color: var(--label-primary); background: transparent; text-align: right;
+  }
+  .form-input-ios::placeholder { color: var(--ios-gray3); }
+  .form-textarea-ios {
+    width: 100%; border: none; outline: none; font-size: 0.875rem;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    color: var(--label-primary); background: transparent; resize: none; min-height: 80px; line-height: 1.5; padding: 0;
+  }
+  .form-textarea-ios::placeholder { color: var(--ios-gray3); }
+
+  /* Type Toggle */
+  .type-seg { display: flex; border-radius: 10px; overflow: hidden; width: 100%; }
+  .type-seg-btn {
+    flex: 1; padding: 11px 8px; border: none; background: var(--bg-primary); cursor: pointer;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.82rem; font-weight: 500; color: var(--ios-gray);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    transition: all 0.15s; position: relative;
+  }
+  .type-seg-btn + .type-seg-btn::before {
+    content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 0.5px; background: var(--separator);
+  }
+  .type-seg-btn.active { background: rgba(0,122,255,0.08); color: var(--ios-blue); font-weight: 600; }
+  .type-seg-icon { font-size: 1.2rem; }
+
+  /* Star input */
+  .star-input { display: flex; gap: 3px; }
+  .star-input .star { font-size: 1.35rem; cursor: pointer; transition: transform 0.08s; }
+  .star-input .star:active { transform: scale(0.85); }
+
+  /* Rating rows */
+  .rating-row-ios {
+    display: flex; align-items: center; padding: 10px 14px; position: relative; min-height: 44px;
+  }
+  .rating-row-ios + .rating-row-ios::before {
+    content: ''; position: absolute; top: 0; left: 14px; right: 0; height: 0.5px; background: var(--separator);
+  }
+  .rating-label-ios { font-size: 0.875rem; color: var(--label-primary); flex: 1; display: flex; align-items: center; gap: 6px; }
+
+  /* ── CHECK BUTTON (iOS Checkbox style) ── */
+  .check-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 14px; min-height: 44px; position: relative; cursor: pointer;
+  }
+  .check-row + .check-row::before {
+    content: ''; position: absolute; top: 0; left: 14px; right: 0; height: 0.5px; background: var(--separator);
+  }
+  .check-row:active { background: #F5F5F5; }
+  .check-label { font-size: 0.875rem; color: var(--label-primary); display: flex; align-items: center; gap: 8px; flex: 1; }
+  .check-label .check-icon { font-size: 1.1rem; }
+  .check-label .check-text { display: flex; flex-direction: column; }
+  .check-label .check-title { font-size: 0.875rem; color: var(--label-primary); }
+  .check-label .check-desc { font-size: 0.72rem; color: var(--ios-gray); margin-top: 1px; }
+  /* The actual iOS-style checkbox circle */
+  .ios-checkbox {
+    width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ios-gray3);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.18s cubic-bezier(0.25,0.46,0.45,0.94); flex-shrink: 0;
+  }
+  .ios-checkbox.checked { background: var(--ios-blue); border-color: var(--ios-blue); }
+  .ios-checkbox.checked-orange { background: var(--ios-orange); border-color: var(--ios-orange); }
+  .ios-checkbox.checked-purple { background: var(--ios-purple); border-color: var(--ios-purple); }
+  .ios-checkbox svg { display: none; }
+  .ios-checkbox.checked svg,
+  .ios-checkbox.checked-orange svg,
+  .ios-checkbox.checked-purple svg { display: block; }
+
+  /* Photo upload */
+  .photo-upload-ios { background: var(--bg-primary); border-radius: 10px; overflow: hidden; margin: 0 16px 20px; }
+  .photo-upload-btn { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; min-height: 44px; position: relative; }
+  .photo-upload-btn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .photo-upload-icon-ios { width: 34px; height: 34px; background: rgba(0,122,255,0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+  .photo-upload-text { flex: 1; }
+  .photo-upload-text strong { font-size: 0.875rem; font-weight: 500; color: var(--ios-blue); display: block; }
+  .photo-upload-text small { font-size: 0.75rem; color: var(--ios-gray); }
+  .gps-result-ios { padding: 8px 14px 12px; font-size: 0.8rem; border-top: 0.5px solid var(--separator); display: none; }
+  .gps-result-ios.success { color: var(--ios-green); }
+  .gps-result-ios.warn { color: var(--ios-orange); }
+
+  /* ── CLIPBOARD PASTE ── */
+  .paste-btn-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    border-top: 0.5px solid var(--separator);
+  }
+  .paste-btn {
+    display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+    background: rgba(0,122,255,0.08); color: var(--ios-blue);
+    border: none; border-radius: 8px; cursor: pointer; font-size: 0.82rem; font-weight: 600;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    transition: background 0.12s; flex: 1; justify-content: center;
+  }
+  .paste-btn:active { background: rgba(0,122,255,0.18); }
+  .paste-hint { font-size: 0.72rem; color: var(--ios-gray); line-height: 1.4; flex: 1; }
+
+  /* ── MAP PICKER ── */
+  .map-pick-btn {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    cursor: pointer; min-height: 44px; position: relative;
+    border-top: 0.5px solid var(--separator);
+    background: none; border: none; width: 100%; text-align: left;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    transition: background 0.12s;
+  }
+  .map-pick-btn:active { background: var(--fill3); }
+  .map-pick-icon {
+    width: 34px; height: 34px; background: rgba(52,199,89,0.12); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;
+  }
+  .map-pick-text { flex: 1; }
+  .map-pick-text strong { font-size: 0.875rem; font-weight: 500; color: var(--ios-green); display: block; }
+  .map-pick-text small  { font-size: 0.75rem; color: var(--ios-gray); }
+
+  /* Fullscreen map picker overlay — only the nav bar, sits over the main map */
+  .map-picker-overlay {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 3000;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+  }
+  .map-picker-overlay.open { opacity: 1; pointer-events: all; }
+  .map-picker-nav {
+    background: rgba(28,28,30,0.95); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    padding: 0 16px; height: calc(56px + var(--safe-top)); padding-top: var(--safe-top);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    border-bottom: 0.5px solid rgba(255,255,255,0.12);
+  }
+  .map-picker-title { font-size: 1rem; font-weight: 600; color: white; }
+  .map-picker-hint  { font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-top: 2px; }
+  .map-picker-cancel {
+    background: none; border: none; color: rgba(255,255,255,0.7); font-size: 0.9rem;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    cursor: pointer; padding: 8px 0;
+  }
+  .map-picker-confirm {
+    background: var(--ios-blue); border: none; color: white; font-size: 0.875rem; font-weight: 600;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    cursor: pointer; padding: 8px 14px; border-radius: 8px;
+  }
+  .map-picker-confirm:disabled { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.4); cursor: default; }
+
+  /* Save button */
+  .save-btn {
+    display: block; width: calc(100% - 32px); margin: 8px 16px 0; padding: 15px;
+    background: var(--ios-blue); color: white; border: none; border-radius: 13px;
+    font-size: 1rem; font-weight: 600;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    cursor: pointer; letter-spacing: -0.01em; transition: all 0.15s;
+  }
+  .save-btn:active { transform: scale(0.98); background: #0066D9; }
+
+  /* ── POPUP ── */
+  .leaflet-popup-content-wrapper { border-radius: 13px !important; box-shadow: 0 8px 32px rgba(0,0,0,0.2), 0 1px 4px rgba(0,0,0,0.1) !important; border: none !important; padding: 0 !important; }
+  .leaflet-popup-content { margin: 0 !important; }
+  .popup-content { min-width: 220px; padding: 14px 16px; }
+  .popup-name { font-size: 0.9375rem; font-weight: 700; color: var(--label-primary); margin-bottom: 3px; letter-spacing: -0.01em; }
+  .popup-meta { font-size: 0.78rem; color: var(--ios-gray); margin-bottom: 8px; }
+  .popup-note { font-size: 0.82rem; color: #555; margin-bottom: 8px; line-height: 1.4; }
+  .popup-actions { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--separator); }
+  .popup-btn { flex: 1; padding: 8px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.8125rem; font-weight: 600; font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; transition: all 0.12s; }
+  .popup-btn-edit { background: rgba(0,122,255,0.1); color: var(--ios-blue); }
+  .popup-btn-delete { background: rgba(255,59,48,0.1); color: var(--ios-red); }
+  .popup-btn:active { opacity: 0.7; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: calc(30px + var(--safe-bottom)); left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(50,50,55,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    color: white; padding: 10px 18px; border-radius: 20px; font-size: 0.875rem; font-weight: 500;
+    z-index: 3000; opacity: 0; transition: all 0.25s cubic-bezier(0.25,0.46,0.45,0.94);
+    pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── MOBILE ── */
+  @media (max-width: 768px) {
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0; z-index: 500;
+      width: 100%; max-width: 100%;
+      transform: translateX(-100%); transition: transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94);
+      padding-top: var(--safe-top);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-close-btn { display: flex !important; }
+    .nav-btn-list { display: flex !important; }
+    .map-wrapper { width: 100%; }
+    .fab { bottom: calc(24px + var(--safe-bottom)); right: 16px; }
+    .nav-bar { padding-left: calc(16px + var(--safe-left)); padding-right: calc(16px + var(--safe-right)); }
+  }
+  @media (min-width: 769px) {
+    .sidebar { transform: none !important; position: relative; }
+    .nav-btn-list { display: none !important; }
+    .sidebar-close-btn { display: none !important; }
+    .sidebar-overlay { display: none !important; }
+  }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 499; }
+  .sidebar-overlay.show { display: block; }
+  .sidebar-nav {
+    background: rgba(242,242,247,0.9); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    border-bottom: 0.5px solid var(--separator); padding: 0 16px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .sidebar-nav-title { font-size: 1.0625rem; font-weight: 700; letter-spacing: -0.02em; }
+  .sidebar-close-btn {
+    background: var(--fill3); border: none; width: 30px; height: 30px; border-radius: 50%;
+    cursor: pointer; font-size: 0.95rem; color: var(--ios-gray);
+    align-items: center; justify-content: center; font-weight: 600; display: none;
+  }
+  .nav-btn-list { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  LOCK SCREEN                                          -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="lockScreen">
+  <div class="lock-icon">🏕️</div>
+  <div class="lock-title">Meine Campingplätze</div>
+  <div class="lock-subtitle" id="lockSubtitle">Bitte PIN eingeben</div>
+
+  <!-- Setup-Modus (erster Start) -->
+  <div class="lock-setup" id="lockSetupView" style="display:none;">
+    <div class="lock-input-wrap">
+      <input type="password" class="lock-input" id="setupPin1" placeholder="Neuen PIN wählen" autocomplete="new-password">
+      <button class="lock-eye" onclick="togglePinVisibility('setupPin1', 'eyeSetup1')" id="eyeSetup1">👁</button>
+    </div>
+    <div class="lock-input-wrap">
+      <input type="password" class="lock-input" id="setupPin2" placeholder="PIN bestätigen" autocomplete="new-password">
+      <button class="lock-eye" onclick="togglePinVisibility('setupPin2', 'eyeSetup2')" id="eyeSetup2">👁</button>
+    </div>
+    <div class="lock-error" id="setupError"></div>
+    <button class="lock-btn" onclick="setupPin()">PIN festlegen & starten</button>
+    <div class="lock-setup-hint">Der PIN schützt deine Campingplätze auf diesem Gerät.<br>Auf anderen Geräten kannst du per Import-Datei entsperren.</div>
+  </div>
+
+  <!-- Login-Modus -->
+  <div class="lock-setup" id="lockLoginView" style="display:none;">
+    <div class="lock-input-wrap">
+      <input type="password" class="lock-input" id="loginPin" placeholder="PIN eingeben" autocomplete="current-password" onkeydown="if(event.key==='Enter')unlock()">
+      <button class="lock-eye" onclick="togglePinVisibility('loginPin', 'eyeLogin')" id="eyeLogin">👁</button>
+    </div>
+    <div class="lock-error" id="loginError"></div>
+    <button class="lock-btn" onclick="unlock()">Entsperren</button>
+    <div class="lock-divider">
+      <div class="lock-divider-line"></div>
+      <div class="lock-divider-text">oder</div>
+      <div class="lock-divider-line"></div>
+    </div>
+    <button class="lock-btn lock-btn-secondary" onclick="document.getElementById('unlockFile').click()">
+      📂 Mit Export-Datei entsperren
+    </button>
+    <input type="file" id="unlockFile" accept=".json" style="display:none" onchange="unlockWithFile(event)">
+    <div class="lock-error" id="fileError"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  MAIN APP                                             -->
+<!-- ══════════════════════════════════════════════════════ -->
+
+<nav class="nav-bar">
+  <div class="nav-title">⛺ Campingplätze</div>
+  <div class="nav-actions">
+    <button class="nav-btn nav-btn-list" onclick="toggleSidebar()">📋 Liste</button>
+    <button class="nav-btn" onclick="exportData()">↑ Export</button>
+    <button class="nav-btn" onclick="document.getElementById('importFile').click()">↓ Import</button>
+    <button class="nav-btn" onclick="changePinPrompt()" title="PIN ändern">🔒</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+</nav>
+
+<div class="app-body">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-nav">
+      <div class="sidebar-nav-title">Meine Plätze</div>
+      <button class="sidebar-close-btn" onclick="closeSidebar()">✕</button>
+    </div>
+    <div class="seg-control">
+      <button class="seg-btn active" id="tabVisited" onclick="switchTab('visited')">
+        ✅ Besucht <span class="seg-count" id="countVisited">0</span>
+      </button>
+      <button class="seg-btn" id="tabWishlist" onclick="switchTab('wishlist')">
+        ⭐ Wunschliste <span class="seg-count" id="countWishlist">0</span>
+      </button>
+    </div>
+
+    <!-- Suche -->
+    <div class="search-wrap">
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" id="searchInput" type="search" placeholder="Suchen…"
+               oninput="onSearchInput(this.value)">
+        <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="filter-area">
+      <div class="filter-chips">
+        <button class="filter-chip" id="filterRevisit"   onclick="toggleFilter('revisit')">🔁 Wiederbesuchen</button>
+        <button class="filter-chip" id="filterWorkation" onclick="toggleFilter('workation')">💻 Workation</button>
+      </div>
+      <div style="display:flex;gap:7px;">
+        <div class="filter-select-wrap" id="yearSelectWrap" style="flex:1;">
+          <span class="filter-select-icon">📅</span>
+          <select class="filter-select" id="filterYear" onchange="onYearFilter(this.value)">
+            <option value="">Alle Jahre</option>
+          </select>
+          <span class="filter-select-arrow">▼</span>
+        </div>
+        <div class="filter-select-wrap" id="countrySelectWrap" style="flex:1.4;">
+        <span class="filter-select-icon">🌍</span>
+        <select class="filter-select" id="filterCountry" onchange="onCountryFilter(this.value)">
+          <option value="">Alle Länder</option>
+        </select>
+        <span class="filter-select-arrow">▼</span>
+      </div>
+    </div>
+
+    <div class="site-list" id="siteList"></div>
+  </aside>
+
+  <div class="map-wrapper">
+    <div id="map"></div>
+    <button class="fab" onclick="openAddModal()">+ Hinzufügen</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  SHEET MODAL                                          -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+    <div class="sheet-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Neuer Campingplatz</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Typ -->
+      <div class="form-section">
+        <div class="form-section-label">Typ</div>
+        <div class="form-section-content">
+          <div class="type-seg">
+            <button class="type-seg-btn active" id="typeVisited" onclick="setType('visited')">
+              <span class="type-seg-icon">🏕️</span><span>Besucht</span>
+            </button>
+            <button class="type-seg-btn" id="typeWishlist" onclick="setType('wishlist')">
+              <span class="type-seg-icon">⭐</span><span>Wunschliste</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Name, Region, Datum -->
+      <div class="form-section">
+        <div class="form-section-label">Angaben</div>
+        <div class="form-section-content">
+          <div class="form-row-ios">
+            <label>Platzname</label>
+            <input type="text" class="form-input-ios" id="inputName" placeholder="z.B. Camping am See">
+          </div>
+          <div class="form-row-ios">
+            <label>Land / Region</label>
+            <input type="text" class="form-input-ios" id="inputLocation" placeholder="Bayern, Deutschland">
+          </div>
+          <div class="form-row-ios">
+            <label>Datum</label>
+            <input type="date" class="form-input-ios" id="inputDate">
+          </div>
+        </div>
+      </div>
+
+      <!-- Standort: Foto / Karte / Zwischenablage + Koordinaten -->
+      <div class="form-section">
+        <div class="form-section-label">Standort</div>
+        <div class="form-section-content">
+
+          <!-- Methode 1: GPS aus Foto -->
+          <div class="photo-upload-btn" style="border-top:none;">
+            <input type="file" accept="image/*" onchange="readExif(event)">
+            <div class="photo-upload-icon-ios">📷</div>
+            <div class="photo-upload-text">
+              <strong>GPS aus Foto übernehmen</strong>
+              <small>iPhone-Foto wählen — Koordinaten automatisch</small>
+            </div>
+          </div>
+          <div id="gpsResult" class="gps-result-ios"></div>
+
+          <!-- Methode 2: Auf Karte markieren -->
+          <button class="map-pick-btn" onclick="openMapPicker()">
+            <div class="map-pick-icon">🗺️</div>
+            <div class="map-pick-text">
+              <strong>Auf Karte markieren</strong>
+              <small>Karte verschieben, Punkt setzen</small>
+            </div>
+          </button>
+
+          <!-- Methode 3: Aus Google Maps einfügen -->
+          <div class="paste-btn-row">
+            <button class="paste-btn" onclick="pasteFromMaps()">
+              📋 Aus Google Maps einfügen
+            </button>
+          </div>
+
+          <!-- Koordinaten (Ergebnis / manuell) -->
+          <div class="form-row-ios label-wide" style="border-top: 0.5px solid var(--separator);">
+            <label>Breitengrad</label>
+            <input type="number" class="form-input-ios" id="inputLat" placeholder="48.1374" step="any">
+          </div>
+          <div class="form-row-ios label-wide">
+            <label>Längengrad</label>
+            <input type="number" class="form-input-ios" id="inputLon" placeholder="11.5755" step="any">
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Bewertung -->
+      <div class="form-section" id="ratingGroup">
+        <div class="form-section-label">Bewertung</div>
+        <div class="form-section-content">
+          <div class="rating-row-ios">
+            <span class="rating-label-ios">🌄 Lage</span>
+            <div class="star-input" id="starLage">
+              <span class="star" onclick="setRating('lage',1)">★</span>
+              <span class="star" onclick="setRating('lage',2)">★</span>
+              <span class="star" onclick="setRating('lage',3)">★</span>
+              <span class="star" onclick="setRating('lage',4)">★</span>
+              <span class="star" onclick="setRating('lage',5)">★</span>
+            </div>
+          </div>
+          <div class="rating-row-ios">
+            <span class="rating-label-ios">💶 Preis</span>
+            <div class="star-input" id="starPreis">
+              <span class="star" onclick="setRating('preis',1)">★</span>
+              <span class="star" onclick="setRating('preis',2)">★</span>
+              <span class="star" onclick="setRating('preis',3)">★</span>
+              <span class="star" onclick="setRating('preis',4)">★</span>
+              <span class="star" onclick="setRating('preis',5)">★</span>
+            </div>
+          </div>
+          <div class="rating-row-ios">
+            <span class="rating-label-ios">🧹 Sauberkeit</span>
+            <div class="star-input" id="starSauberkeit">
+              <span class="star" onclick="setRating('sauberkeit',1)">★</span>
+              <span class="star" onclick="setRating('sauberkeit',2)">★</span>
+              <span class="star" onclick="setRating('sauberkeit',3)">★</span>
+              <span class="star" onclick="setRating('sauberkeit',4)">★</span>
+              <span class="star" onclick="setRating('sauberkeit',5)">★</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Optionen: Wiederbesuchen & Workation -->
+      <div class="form-section" id="optionsGroup">
+        <div class="form-section-label">Optionen</div>
+        <div class="form-section-content">
+          <!-- Wiederbesuchen -->
+          <div class="check-row" onclick="toggleCheck('revisit')">
+            <div class="check-label">
+              <span class="check-icon">🔁</span>
+              <div class="check-text">
+                <span class="check-title">Wiederbesuchen</span>
+                <span class="check-desc">Diesen Platz nochmals besuchen</span>
+              </div>
+            </div>
+            <div class="ios-checkbox" id="checkRevisit">
+              <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                <path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+          <!-- Workation -->
+          <div class="check-row" onclick="toggleCheck('workation')">
+            <div class="check-label">
+              <span class="check-icon">💻</span>
+              <div class="check-text">
+                <span class="check-title">Workation-tauglich</span>
+                <span class="check-desc">Gutes WLAN / Arbeitsatmosphäre</span>
+              </div>
+            </div>
+            <div class="ios-checkbox" id="checkWorkation">
+              <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                <path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notizen -->
+      <div class="form-section">
+        <div class="form-section-label">Notizen</div>
+        <div class="form-section-content">
+          <div class="form-row-ios" style="align-items: flex-start; padding: 12px 14px;">
+            <textarea class="form-textarea-ios" id="inputNotes" placeholder="Erfahrungen, Highlights, Tipps…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveCampsite()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  MAP PICKER OVERLAY (bar over main map)               -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="map-picker-overlay" id="mapPickerOverlay">
+  <div class="map-picker-nav">
+    <div>
+      <div class="map-picker-title">Standort markieren</div>
+      <div class="map-picker-hint" id="mapPickerCoords">Auf die Karte tippen um einen Punkt zu setzen</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="map-picker-cancel" onclick="closeMapPicker()">Abbrechen</button>
+      <button class="map-picker-confirm" id="mapPickerConfirm" onclick="confirmMapPick()" disabled>Übernehmen</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  PIN / LOCK
+// ═══════════════════════════════════════════════════════
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function togglePinVisibility(inputId, btnId) {
+  const inp = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+async function initLock() {
+  const storedHash = localStorage.getItem('pwHash');
+  if (!storedHash) {
+    // First start – setup
+    document.getElementById('lockSubtitle').textContent = 'PIN festlegen um die App zu schützen';
+    document.getElementById('lockSetupView').style.display = 'block';
+  } else {
+    document.getElementById('lockSubtitle').textContent = 'PIN eingeben';
+    document.getElementById('lockLoginView').style.display = 'block';
+    setTimeout(() => document.getElementById('loginPin').focus(), 300);
+  }
+}
+
+async function setupPin() {
+  const p1 = document.getElementById('setupPin1').value;
+  const p2 = document.getElementById('setupPin2').value;
+  const err = document.getElementById('setupError');
+  if (p1.length < 4) { err.textContent = 'Mindestens 4 Zeichen'; return; }
+  if (p1 !== p2) { err.textContent = 'PINs stimmen nicht überein'; return; }
+  const hash = await sha256(p1);
+  localStorage.setItem('pwHash', hash);
+  unlockApp();
+}
+
+async function unlock() {
+  const pin = document.getElementById('loginPin').value;
+  const hash = await sha256(pin);
+  const stored = localStorage.getItem('pwHash');
+  if (hash === stored) {
+    unlockApp();
+  } else {
+    const err = document.getElementById('loginError');
+    err.textContent = 'Falscher PIN';
+    document.getElementById('loginPin').value = '';
+    setTimeout(() => err.textContent = '', 2000);
+  }
+}
+
+function unlockWithFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Accept hash from file if present
+      if (data.pwHash) {
+        localStorage.setItem('pwHash', data.pwHash);
+      }
+      const imported = data.campsites || data;
+      if (Array.isArray(imported)) {
+        const existingIds = new Set(campsites.map(c => c.id));
+        const newOnes = imported.filter(c => !existingIds.has(c.id));
+        campsites = [...campsites, ...newOnes];
+        save();
+      }
+      unlockApp();
+      if (Array.isArray(imported)) showToast(`⬆️ ${imported.length} Einträge importiert`);
+    } catch(err) {
+      document.getElementById('fileError').textContent = 'Ungültige Datei';
+      setTimeout(() => document.getElementById('fileError').textContent = '', 2500);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function unlockApp() {
+  document.getElementById('lockScreen').classList.add('hidden');
+  renderAll();
+  setTimeout(() => {
+    const pts = campsites.filter(c => c.lat && c.lon).map(c => [c.lat, c.lon]);
+    if (pts.length > 0) map.fitBounds(pts, { padding: [40, 40], maxZoom: 10 });
+  }, 200);
+}
+
+async function changePinPrompt() {
+  const oldPin = prompt('Aktuellen PIN eingeben:');
+  if (oldPin === null) return;
+  const oldHash = await sha256(oldPin);
+  if (oldHash !== localStorage.getItem('pwHash')) { showToast('❌ Falscher PIN'); return; }
+  const newPin = prompt('Neuen PIN wählen (mind. 4 Zeichen):');
+  if (!newPin || newPin.length < 4) { showToast('⚠️ PIN zu kurz'); return; }
+  const confirm = prompt('Neuen PIN bestätigen:');
+  if (newPin !== confirm) { showToast('❌ PINs stimmen nicht überein'); return; }
+  const newHash = await sha256(newPin);
+  localStorage.setItem('pwHash', newHash);
+  showToast('✅ PIN geändert');
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let campsites = JSON.parse(localStorage.getItem('campsites') || '[]');
+let currentTab = 'visited';
+let editingId = null;
+let currentRatings = { lage: 0, preis: 0, sauberkeit: 0 };
+let currentRevisit = false;
+let currentWorkation = false;
+let currentType = 'visited';
+let activeMarkerId = null;
+let markers = {};
+let searchQuery = '';
+let activeFilters = new Set();
+let filterCountry = '';
+let filterYear = '';
+//  MAP
+// ═══════════════════════════════════════════════════════
+const map = L.map('map', { zoomControl: false }).setView([51.0, 10.5], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 19
+}).addTo(map);
+L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+function createIcon(type, revisit, workation) {
+  const color = type === 'visited' ? '#007AFF' : '#FF9500';
+  const emoji = type === 'visited' ? '⛺' : '⭐';
+  let ring = '2.5px solid white';
+  if (workation) ring = '3px solid #AF52DE';
+  else if (revisit) ring = '3px solid #FF9500';
+  return L.divIcon({
+    html: `<div style="
+      background:${color}; color:white; border-radius:50% 50% 50% 0;
+      width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+      font-size:16px; box-shadow:0 3px 12px rgba(0,0,0,0.25),0 1px 3px rgba(0,0,0,0.15);
+      transform:rotate(-45deg); border:${ring};
+    "><span style="transform:rotate(45deg)">${emoji}</span></div>`,
+    iconSize: [38,38], iconAnchor: [19,38], popupAnchor: [0,-40], className: ''
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  SIDEBAR MOBILE
+// ═══════════════════════════════════════════════════════
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+function renderAll() {
+  document.getElementById('countVisited').textContent  = campsites.filter(c => c.type==='visited').length;
+  document.getElementById('countWishlist').textContent = campsites.filter(c => c.type==='wishlist').length;
+  refreshCountryDropdown();
+  refreshYearDropdown();
+  renderList();
+  renderMarkers();
+}
+
+function renderList() {
+  const list = document.getElementById('siteList');
+  const q = searchQuery.toLowerCase().trim();
+
+  // Apply tab + search + filters
+  let filtered = campsites.filter(c => {
+    if (c.type !== currentTab) return false;
+    if (q) {
+      const haystack = [c.name, c.location, c.notes].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    if (activeFilters.has('revisit')   && !c.revisit)   return false;
+    if (activeFilters.has('workation') && !c.workation) return false;
+    if (filterCountry && !(c.location || '').toLowerCase().includes(filterCountry.toLowerCase())) return false;
+    if (filterYear && !(c.date || '').startsWith(filterYear)) return false;
+    return true;
+  });
+
+  const totalForTab = campsites.filter(c => c.type === currentTab).length;
+  const isFiltering = q || activeFilters.size > 0 || filterCountry || filterYear;
+
+  if (totalForTab === 0) {
+    const msgs = currentTab === 'visited'
+      ? ['Noch keine Besuche', 'Füge deinen ersten Campingplatz hinzu!']
+      : ['Wunschliste leer', 'Merke dir Plätze, die du besuchen möchtest.'];
+    list.innerHTML = `<div class="empty-state">
+      <span class="icon">${currentTab==='visited'?'🏕️':'⭐'}</span>
+      <h3>${msgs[0]}</h3><p>${msgs[1]}</p></div>`;
+    return;
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <span class="icon">🔍</span>
+      <h3>Keine Treffer</h3>
+      <p>Keine Campingplätze entsprechen den Filterkriterien.</p></div>`;
+    return;
+  }
+
+  const header = isFiltering
+    ? `${filtered.length} von ${totalForTab} ${currentTab==='visited'?'Plätzen':'Wünschen'}`
+    : `${filtered.length} ${currentTab==='visited'?'besuchte Plätze':'Wünsche'}`;
+
+  list.innerHTML = `<div class="list-section-header">${header}</div>` +
+    filtered.map((c, i) => {
+      const isFirst = i === 0, isLast = i === filtered.length - 1, isOnly = filtered.length === 1;
+      const radius = isOnly ? '10px' : isFirst ? '10px 10px 0 0' : isLast ? '0 0 10px 10px' : '0';
+      const badges = [];
+      if (c.revisit)   badges.push(`<span class="badge badge-revisit">🔁 Wiederbesuchen</span>`);
+      if (c.workation) badges.push(`<span class="badge badge-workation">💻 Workation</span>`);
+
+      // Highlight search query in name
+      const displayName = q
+        ? escHtml(c.name).replace(new RegExp(`(${escHtml(q)})`, 'gi'), '<mark style="background:rgba(0,122,255,0.15);border-radius:3px;padding:0 1px">$1</mark>')
+        : escHtml(c.name);
+
+      return `<div class="camp-card ${activeMarkerId===c.id?'active-card':''}" id="card-${c.id}"
+           style="border-radius:${radius}" onclick="focusCampsite('${c.id}')">
+        <div class="card-top">
+          <div class="card-name">${displayName}</div>
+          <div class="card-actions">
+            <button class="icon-btn" title="Bearbeiten" onclick="event.stopPropagation();editCampsite('${c.id}')">✏️</button>
+            <button class="icon-btn" title="Löschen"    onclick="event.stopPropagation();deleteCampsite('${c.id}')">🗑️</button>
+          </div>
+        </div>
+        <div class="card-meta">
+          ${c.location ? `<span>📍 ${escHtml(c.location)}</span>` : ''}
+          ${c.date     ? `<span>📅 ${formatDate(c.date)}</span>`   : ''}
+        </div>
+        ${c.type==='visited' && (c.ratings?.lage||c.ratings?.preis||c.ratings?.sauberkeit) ? `
+          <div class="criteria-stars">
+            ${c.ratings.lage       ? `<div class="criteria-row-small"><span class="clabel">🌄 Lage</span><span class="stars">${renderStars(c.ratings.lage)}</span></div>`       : ''}
+            ${c.ratings.preis      ? `<div class="criteria-row-small"><span class="clabel">💶 Preis</span><span class="stars">${renderStars(c.ratings.preis)}</span></div>`      : ''}
+            ${c.ratings.sauberkeit ? `<div class="criteria-row-small"><span class="clabel">🧹 Sauberkeit</span><span class="stars">${renderStars(c.ratings.sauberkeit)}</span></div>` : ''}
+          </div>` : ''}
+        ${badges.length ? `<div class="card-badges">${badges.join('')}</div>` : ''}
+        ${c.notes ? `<div class="card-note">${escHtml(c.notes)}</div>` : ''}
+      </div>`;
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  SEARCH
+// ═══════════════════════════════════════════════════════
+function onSearchInput(val) {
+  searchQuery = val;
+  const clearBtn = document.getElementById('searchClear');
+  clearBtn.classList.toggle('visible', val.length > 0);
+  renderList();
+}
+function clearSearch() {
+  searchQuery = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('visible');
+  renderList();
+}
+
+// ═══════════════════════════════════════════════════════
+//  FILTER CHIPS
+// ═══════════════════════════════════════════════════════
+function toggleFilter(key) {
+  if (activeFilters.has(key)) {
+    activeFilters.delete(key);
+  } else {
+    activeFilters.add(key);
+  }
+  updateFilterChipUI();
+  renderList();
+}
+function updateFilterChipUI() {
+  const cfg = {
+    revisit:   { id: 'filterRevisit',   cls: 'active-orange' },
+    workation: { id: 'filterWorkation', cls: 'active-purple' },
+  };
+  for (const [key, c] of Object.entries(cfg)) {
+    document.getElementById(c.id).className = 'filter-chip' + (activeFilters.has(key) ? ' ' + c.cls : '');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  COUNTRY FILTER
+// ═══════════════════════════════════════════════════════
+function refreshCountryDropdown() {
+  const sel = document.getElementById('filterCountry');
+  // Collect unique countries from current tab's campsites
+  const countries = [...new Set(
+    campsites
+      .filter(c => c.type === currentTab && c.location)
+      .map(c => {
+        // Extract country: take last comma-separated segment, or the whole value
+        const parts = c.location.split(',').map(s => s.trim()).filter(Boolean);
+        return parts[parts.length - 1];
+      })
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'de'));
+
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Alle Länder</option>' +
+    countries.map(c => `<option value="${escHtml(c)}"${c===current?' selected':''}>${escHtml(c)}</option>`).join('');
+  // Restore value if still available
+  if (countries.includes(current)) {
+    sel.value = current;
+  } else if (current && !countries.includes(current)) {
+    // Previously selected country no longer in list — reset
+    filterCountry = '';
+    document.getElementById('countrySelectWrap').classList.remove('has-value');
+  }
+}
+
+function onCountryFilter(val) {
+  filterCountry = val;
+  document.getElementById('countrySelectWrap').classList.toggle('has-value', !!val);
+  renderList();
+}
+
+// ═══════════════════════════════════════════════════════
+//  YEAR FILTER
+// ═══════════════════════════════════════════════════════
+function refreshYearDropdown() {
+  const sel = document.getElementById('filterYear');
+  const years = [...new Set(
+    campsites
+      .filter(c => c.type === currentTab && c.date)
+      .map(c => c.date.substring(0, 4))
+      .filter(Boolean)
+  )].sort((a, b) => b - a); // newest first
+
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Alle Jahre</option>' +
+    years.map(y => `<option value="${y}"${y===current?' selected':''}>${y}</option>`).join('');
+  if (!years.includes(current) && current) {
+    filterYear = '';
+    document.getElementById('yearSelectWrap').classList.remove('has-value');
+  }
+}
+
+function onYearFilter(val) {
+  filterYear = val;
+  document.getElementById('yearSelectWrap').classList.toggle('has-value', !!val);
+  renderList();
+}
+
+// ═══════════════════════════════════════════════════════
+//  CLIPBOARD — Google Maps
+// ═══════════════════════════════════════════════════════
+async function pasteFromMaps() {
+  try {
+    let text = '';
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      text = await navigator.clipboard.readText();
+    } else {
+      text = prompt('Koordinaten aus Google Maps einfügen\n(z.B. 47.376888, 8.541694 oder Maps-URL):') || '';
+    }
+    parseMapsCoords(text.trim());
+  } catch(e) {
+    // Clipboard access denied — fallback to prompt
+    const text = prompt('Koordinaten einfügen (z.B. 47.376888, 8.541694):') || '';
+    parseMapsCoords(text.trim());
+  }
+}
+
+function parseMapsCoords(text) {
+  if (!text) return;
+
+  // Pattern 1: Google Maps URL with @lat,lon or q=lat,lon or ll=lat,lon
+  let m = text.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/) ||
+          text.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/) ||
+          text.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (m) {
+    setCoords(parseFloat(m[1]), parseFloat(m[2]));
+    return;
+  }
+
+  // Pattern 2: plain "lat, lon" — decimal with optional spaces
+  m = text.match(/^(-?\d{1,3}\.?\d*)[,;\s]+(-?\d{1,3}\.?\d*)$/);
+  if (m) {
+    setCoords(parseFloat(m[1]), parseFloat(m[2]));
+    return;
+  }
+
+  // Pattern 3: DMS like 47°22'36.8"N 8°32'30.1"E
+  m = text.match(/(\d+)°(\d+)'([\d.]+)"([NS])[,\s]+(\d+)°(\d+)'([\d.]+)"([EW])/);
+  if (m) {
+    let lat = parseInt(m[1]) + parseInt(m[2])/60 + parseFloat(m[3])/3600;
+    let lon = parseInt(m[5]) + parseInt(m[6])/60 + parseFloat(m[7])/3600;
+    if (m[4]==='S') lat = -lat;
+    if (m[8]==='W') lon = -lon;
+    setCoords(lat, lon);
+    return;
+  }
+
+  showToast('⚠️ Format nicht erkannt. Bitte prüfen.');
+}
+
+function setCoords(lat, lon) {
+  if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+    showToast('⚠️ Ungültige Koordinaten');
+    return;
+  }
+  document.getElementById('inputLat').value = lat.toFixed(6);
+  document.getElementById('inputLon').value = lon.toFixed(6);
+  showToast(`📍 ${lat.toFixed(5)}, ${lon.toFixed(5)}`);
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAP PICKER
+// ═══════════════════════════════════════════════════════
+//  MAP PICKER — nutzt die Hauptkarte
+// ═══════════════════════════════════════════════════════
+let pickerActive = false;
+let pickerMarker = null;
+let pickerTempCoords = null;
+
+function openMapPicker() {
+  pickerActive = true;
+  pickerTempCoords = null;
+
+  // Hauptkarte in den Vordergrund, Modal verstecken
+  document.getElementById('modalOverlay').style.display = 'none';
+  document.getElementById('mapPickerOverlay').classList.add('open');
+
+  // Koordinaten merken — falls schon welche eingetragen
+  const lat = parseFloat(document.getElementById('inputLat').value);
+  const lon = parseFloat(document.getElementById('inputLon').value);
+
+  // Bestehenden Picker-Marker entfernen
+  if (pickerMarker) { map.removeLayer(pickerMarker); pickerMarker = null; }
+
+  // Falls schon Koordinaten vorhanden: Karte dorthin zentrieren + Marker setzen
+  if (!isNaN(lat) && !isNaN(lon)) {
+    map.setView([lat, lon], 13);
+    placePinAt(lat, lon);
+  }
+
+  // Karte neu rendern (war ggf. hinter dem Modal versteckt)
+  map.invalidateSize();
+
+  // Click-Handler auf Karte
+  map.once('click', function(e) {
+    placePinAt(e.latlng.lat, e.latlng.lng);
+    pickerTempCoords = e.latlng;
+    document.getElementById('mapPickerConfirm').disabled = false;
+    document.getElementById('mapPickerCoords').textContent =
+      `📍 ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+  });
+
+  document.getElementById('mapPickerConfirm').disabled = (isNaN(lat) || isNaN(lon));
+  if (!isNaN(lat) && !isNaN(lon)) {
+    pickerTempCoords = { lat, lng: lon };
+    document.getElementById('mapPickerCoords').textContent = `📍 ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  } else {
+    document.getElementById('mapPickerCoords').textContent = 'Auf die Karte tippen um einen Punkt zu setzen';
+  }
+}
+
+function placePinAt(lat, lng) {
+  if (pickerMarker) map.removeLayer(pickerMarker);
+  pickerMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      html: `<div style="
+        background:#34C759; width:20px; height:20px; border-radius:50%;
+        border:3px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.4);
+        margin-left:-10px; margin-top:-10px;
+      "></div>`,
+      iconSize: [20,20], iconAnchor: [10,10], className: ''
+    }),
+    draggable: true
+  }).addTo(map);
+
+  pickerMarker.on('drag', function(e) {
+    const p = e.target.getLatLng();
+    pickerTempCoords = p;
+    document.getElementById('mapPickerCoords').textContent = `📍 ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+  });
+  pickerMarker.on('dragend', function(e) {
+    pickerTempCoords = e.target.getLatLng();
+    document.getElementById('mapPickerConfirm').disabled = false;
+  });
+}
+
+function confirmMapPick() {
+  if (!pickerTempCoords) return;
+  setCoords(pickerTempCoords.lat, pickerTempCoords.lng);
+  closeMapPicker();
+}
+
+function closeMapPicker() {
+  pickerActive = false;
+  map.off('click'); // remove any pending click handler
+  if (pickerMarker) { map.removeLayer(pickerMarker); pickerMarker = null; }
+  document.getElementById('mapPickerOverlay').classList.remove('open');
+  document.getElementById('modalOverlay').style.display = '';
+}
+
+function renderMarkers() {
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+  campsites.forEach(c => {
+    if (!c.lat || !c.lon) return;
+    const marker = L.marker([c.lat, c.lon], { icon: createIcon(c.type, c.revisit, c.workation) })
+      .addTo(map).bindPopup(buildPopup(c));
+    marker.on('click', () => { activeMarkerId = c.id; renderList(); scrollToCard(c.id); });
+    markers[c.id] = marker;
+  });
+}
+
+function buildPopup(c) {
+  const hasRatings = c.ratings && (c.ratings.lage || c.ratings.preis || c.ratings.sauberkeit);
+  const badges = [
+    c.revisit   ? `<span style="color:#FF9500;font-weight:600;font-size:0.75rem">🔁 Wiederbesuchen</span>` : '',
+    c.workation ? `<span style="color:#AF52DE;font-weight:600;font-size:0.75rem">💻 Workation</span>` : ''
+  ].filter(Boolean).join(' · ');
+  return `<div class="popup-content">
+    <div class="popup-name">${escHtml(c.name)}</div>
+    <div class="popup-meta">${c.location?c.location+(c.date?' · ':''):''}${c.date?formatDate(c.date):''}</div>
+    ${hasRatings?`<div style="margin-bottom:6px;font-size:0.78rem;display:flex;flex-direction:column;gap:2px">
+      ${c.ratings.lage       ?`<div style="display:flex;align-items:center;gap:5px"><span style="width:72px;color:#8E8E93">🌄 Lage</span><span>${renderStars(c.ratings.lage)}</span></div>`:''}
+      ${c.ratings.preis      ?`<div style="display:flex;align-items:center;gap:5px"><span style="width:72px;color:#8E8E93">💶 Preis</span><span>${renderStars(c.ratings.preis)}</span></div>`:''}
+      ${c.ratings.sauberkeit ?`<div style="display:flex;align-items:center;gap:5px"><span style="width:72px;color:#8E8E93">🧹 Sauberkeit</span><span>${renderStars(c.ratings.sauberkeit)}</span></div>`:''}
+    </div>`:''}
+    ${badges?`<div style="margin-bottom:6px">${badges}</div>`:''}
+    ${c.notes?`<div class="popup-note">${escHtml(c.notes)}</div>`:''}
+    <div class="popup-actions">
+      <button class="popup-btn popup-btn-edit" onclick="editCampsite('${c.id}')">✏️ Bearbeiten</button>
+      <button class="popup-btn popup-btn-delete" onclick="deleteCampsite('${c.id}')">🗑️ Löschen</button>
+    </div>
+  </div>`;
+}
+
+function renderStars(rating) {
+  return [1,2,3,4,5].map(i => `<span class="star ${i<=rating?'filled':''}">★</span>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  FOCUS / SCROLL
+// ═══════════════════════════════════════════════════════
+function focusCampsite(id) {
+  const c = campsites.find(x => x.id === id);
+  if (!c) return;
+  activeMarkerId = id;
+  renderList();
+  if (c.lat && c.lon) {
+    map.flyTo([c.lat, c.lon], 13, { duration: 1.0 });
+    setTimeout(() => markers[id]?.openPopup(), 1100);
+  }
+  if (window.innerWidth <= 768) closeSidebar();
+}
+function scrollToCard(id) {
+  const el = document.getElementById('card-' + id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ═══════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════
+function switchTab(tab) {
+  currentTab = tab;
+  activeMarkerId = null;
+  // Reset search & filters when switching tabs
+  searchQuery = '';
+  filterCountry = '';
+  filterYear = '';
+  activeFilters.clear();
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('visible');
+  document.getElementById('filterCountry').value = '';
+  document.getElementById('filterYear').value = '';
+  document.getElementById('countrySelectWrap').classList.remove('has-value');
+  document.getElementById('yearSelectWrap').classList.remove('has-value');
+  updateFilterChipUI();
+  refreshCountryDropdown();
+  refreshYearDropdown();
+  document.getElementById('tabVisited').classList.toggle('active', tab==='visited');
+  document.getElementById('tabWishlist').classList.toggle('active', tab==='wishlist');
+  renderList();
+}
+
+// ═══════════════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════════════
+function openAddModal() {
+  editingId = null;
+  currentRatings = { lage:0, preis:0, sauberkeit:0 };
+  currentRevisit = false;
+  currentWorkation = false;
+  currentType = 'visited';
+  document.getElementById('modalTitle').textContent = 'Neuer Campingplatz';
+  document.getElementById('inputName').value = '';
+  document.getElementById('inputLat').value = '';
+  document.getElementById('inputLon').value = '';
+  document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('inputLocation').value = '';
+  document.getElementById('inputNotes').value = '';
+  const gpsEl = document.getElementById('gpsResult');
+  gpsEl.style.display = 'none'; gpsEl.className = 'gps-result-ios';
+  updateAllStarUI();
+  updateCheckUI();
+  setType('visited');
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function editCampsite(id) {
+  const c = campsites.find(x => x.id === id);
+  if (!c) return;
+  editingId = id;
+  currentRatings = c.ratings ? { ...c.ratings } : { lage:0, preis:0, sauberkeit:0 };
+  currentRevisit   = c.revisit   || false;
+  currentWorkation = c.workation || false;
+  currentType = c.type;
+  document.getElementById('modalTitle').textContent = 'Campingplatz bearbeiten';
+  document.getElementById('inputName').value     = c.name;
+  document.getElementById('inputLat').value      = c.lat  || '';
+  document.getElementById('inputLon').value      = c.lon  || '';
+  document.getElementById('inputDate').value     = c.date || '';
+  document.getElementById('inputLocation').value = c.location || '';
+  document.getElementById('inputNotes').value    = c.notes    || '';
+  const gpsEl = document.getElementById('gpsResult');
+  gpsEl.style.display = 'none'; gpsEl.className = 'gps-result-ios';
+  updateAllStarUI();
+  updateCheckUI();
+  setType(c.type);
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+// ═══════════════════════════════════════════════════════
+//  TYPE
+// ═══════════════════════════════════════════════════════
+function setType(type) {
+  currentType = type;
+  document.getElementById('typeVisited').classList.toggle('active',  type==='visited');
+  document.getElementById('typeWishlist').classList.toggle('active', type==='wishlist');
+  const show = type === 'visited' ? 'block' : 'none';
+  document.getElementById('ratingGroup').style.display  = show;
+  document.getElementById('optionsGroup').style.display = show;
+}
+
+// ═══════════════════════════════════════════════════════
+//  RATINGS
+// ═══════════════════════════════════════════════════════
+function setRating(criterion, n) {
+  currentRatings[criterion] = n;
+  updateStarRow(criterion);
+}
+function updateStarRow(criterion) {
+  const idMap = { lage:'starLage', preis:'starPreis', sauberkeit:'starSauberkeit' };
+  const val = currentRatings[criterion];
+  document.querySelectorAll(`#${idMap[criterion]} .star`).forEach((el,i) => {
+    el.style.color = i < val ? '#FFCC00' : '#C7C7CC';
+  });
+}
+function updateAllStarUI() { ['lage','preis','sauberkeit'].forEach(updateStarRow); }
+
+// ═══════════════════════════════════════════════════════
+//  CHECKBOXES (Wiederbesuchen + Workation)
+// ═══════════════════════════════════════════════════════
+function toggleCheck(which) {
+  if (which === 'revisit') {
+    currentRevisit = !currentRevisit;
+  } else if (which === 'workation') {
+    currentWorkation = !currentWorkation;
+  }
+  updateCheckUI();
+}
+
+function updateCheckUI() {
+  const rEl = document.getElementById('checkRevisit');
+  const wEl = document.getElementById('checkWorkation');
+  rEl.className = 'ios-checkbox' + (currentRevisit   ? ' checked-orange' : '');
+  wEl.className = 'ios-checkbox' + (currentWorkation ? ' checked-purple' : '');
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXIF / GPS
+// ═══════════════════════════════════════════════════════
+function readExif(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const resultEl = document.getElementById('gpsResult');
+  resultEl.style.display = 'block';
+  resultEl.className = 'gps-result-ios';
+  resultEl.textContent = '⏳ GPS-Daten werden ausgelesen…';
+  EXIF.getData(file, function() {
+    const lat = EXIF.getTag(this,'GPSLatitude'), latRef = EXIF.getTag(this,'GPSLatitudeRef');
+    const lon = EXIF.getTag(this,'GPSLongitude'), lonRef = EXIF.getTag(this,'GPSLongitudeRef');
+    if (lat && lon) {
+      const latDec = toDecimal(lat, latRef), lonDec = toDecimal(lon, lonRef);
+      document.getElementById('inputLat').value = latDec.toFixed(6);
+      document.getElementById('inputLon').value = lonDec.toFixed(6);
+      resultEl.className = 'gps-result-ios success';
+      resultEl.textContent = `✅ GPS gefunden: ${latDec.toFixed(5)}, ${lonDec.toFixed(5)}`;
+      const dateTime = EXIF.getTag(this,'DateTimeOriginal');
+      if (dateTime && !document.getElementById('inputDate').value) {
+        const p = dateTime.split(' ')[0].split(':');
+        document.getElementById('inputDate').value = `${p[0]}-${p[1]}-${p[2]}`;
+      }
+    } else {
+      resultEl.className = 'gps-result-ios warn';
+      resultEl.textContent = '⚠️ Keine GPS-Daten — bitte Koordinaten manuell eingeben.';
+    }
+  });
+}
+function toDecimal(dms, ref) {
+  const d = dms[0].numerator/dms[0].denominator;
+  const m = dms[1].numerator/dms[1].denominator;
+  const s = dms[2].numerator/dms[2].denominator;
+  let dec = d + m/60 + s/3600;
+  if (ref==='S'||ref==='W') dec = -dec;
+  return dec;
+}
+
+// ═══════════════════════════════════════════════════════
+//  SAVE
+// ═══════════════════════════════════════════════════════
+function saveCampsite() {
+  const name = document.getElementById('inputName').value.trim();
+  if (!name) { showToast('⚠️ Bitte einen Namen eingeben'); return; }
+  const latVal = parseFloat(document.getElementById('inputLat').value);
+  const lonVal = parseFloat(document.getElementById('inputLon').value);
+  const hasCoords = !isNaN(latVal) && !isNaN(lonVal);
+  const data = {
+    id:        editingId || Date.now().toString(),
+    name,
+    type:      currentType,
+    lat:       hasCoords ? latVal : null,
+    lon:       hasCoords ? lonVal : null,
+    date:      document.getElementById('inputDate').value,
+    location:  document.getElementById('inputLocation').value.trim(),
+    ratings:   currentType==='visited' ? { ...currentRatings } : {},
+    revisit:   currentType==='visited' ? currentRevisit   : false,
+    workation: currentType==='visited' ? currentWorkation : false,
+    notes:     document.getElementById('inputNotes').value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+  if (editingId) {
+    const idx = campsites.findIndex(c => c.id === editingId);
+    if (idx !== -1) campsites[idx] = data;
+  } else {
+    campsites.push(data);
+  }
+  save();
+  closeModal();
+  currentTab = data.type;
+  document.getElementById('tabVisited').classList.toggle('active',  currentTab==='visited');
+  document.getElementById('tabWishlist').classList.toggle('active', currentTab==='wishlist');
+  renderAll();
+  if (hasCoords) setTimeout(() => focusCampsite(data.id), 350);
+  showToast(editingId ? '✅ Gespeichert' : '⛺ Campingplatz hinzugefügt');
+}
+
+// ═══════════════════════════════════════════════════════
+//  DELETE
+// ═══════════════════════════════════════════════════════
+function deleteCampsite(id) {
+  if (!confirm('Diesen Campingplatz wirklich löschen?')) return;
+  campsites = campsites.filter(c => c.id !== id);
+  if (activeMarkerId === id) activeMarkerId = null;
+  map.closePopup();
+  save();
+  renderAll();
+  showToast('🗑️ Gelöscht');
+}
+
+// ═══════════════════════════════════════════════════════
+//  PERSIST
+// ═══════════════════════════════════════════════════════
+function save() { localStorage.setItem('campsites', JSON.stringify(campsites)); }
+
+// ═══════════════════════════════════════════════════════
+//  EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════
+function exportData() {
+  const pwHash = localStorage.getItem('pwHash') || '';
+  const json = JSON.stringify({ version:1, exportedAt: new Date().toISOString(), pwHash, campsites }, null, 2);
+  const blob = new Blob([json], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `campingplätze-${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('⬇️ Export erfolgreich');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Sync pwHash if present
+      if (data.pwHash) localStorage.setItem('pwHash', data.pwHash);
+      const imported = data.campsites || data;
+      if (!Array.isArray(imported)) throw new Error('Ungültiges Format');
+      if (confirm(`${imported.length} Campingplätze importieren? Bestehende Daten werden zusammengeführt.`)) {
+        const existingIds = new Set(campsites.map(c => c.id));
+        const newOnes = imported.filter(c => !existingIds.has(c.id));
+        campsites = [...campsites, ...newOnes];
+        save();
+        renderAll();
+        showToast(`⬆️ ${newOnes.length} neue Einträge importiert`);
+      }
+    } catch(err) { showToast('❌ Import fehlgeschlagen: ' + err.message); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ═══════════════════════════════════════════════════════
+//  TOAST / HELPERS
+// ═══════════════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatDate(d) {
+  if (!d) return '';
+  const p = d.split('-');
+  return `${p[2]}.${p[1]}.${p[0]}`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+initLock();
+</script>
+</body>
+</html>

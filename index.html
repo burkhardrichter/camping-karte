@@ -676,6 +676,10 @@
             <input type="text" class="form-input-ios" id="inputLocation" placeholder="Bayern, Deutschland">
           </div>
           <div class="form-row-ios">
+            <label>Website</label>
+            <input type="url" class="form-input-ios" id="inputWebsite" placeholder="https://...">
+          </div>
+          <div class="form-row-ios">
             <label>Datum</label>
             <input type="date" class="form-input-ios" id="inputDate">
           </div>
@@ -1074,6 +1078,7 @@ function renderList() {
         <div class="card-meta">
           ${c.location ? `<span>📍 ${escHtml(c.location)}</span>` : ''}
           ${c.date     ? `<span>📅 ${formatDate(c.date)}</span>`   : ''}
+          ${c.website  ? `<span><a href="${escHtml(normalizeUrl(c.website))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🌐 Website</a></span>` : ''}
         </div>
         ${c.type==='visited' && (c.ratings?.lage||c.ratings?.preis||c.ratings?.sauberkeit) ? `
           <div class="criteria-stars">
@@ -1367,12 +1372,18 @@ function buildPopup(c) {
       ${c.ratings.sauberkeit ?`<div style="display:flex;align-items:center;gap:5px"><span style="width:72px;color:#8E8E93">🧹 Sauberkeit</span><span>${renderStars(c.ratings.sauberkeit)}</span></div>`:''}
     </div>`:''}
     ${badges?`<div style="margin-bottom:6px">${badges}</div>`:''}
+    ${c.website?`<div style="margin-bottom:6px;font-size:0.78rem"><a href="${escHtml(normalizeUrl(c.website))}" target="_blank" rel="noopener">🌐 Website</a></div>`:''}
     ${c.notes?`<div class="popup-note">${escHtml(c.notes)}</div>`:''}
     <div class="popup-actions">
       <button class="popup-btn popup-btn-edit" onclick="editCampsite('${c.id}')">✏️ Bearbeiten</button>
       <button class="popup-btn popup-btn-delete" onclick="deleteCampsite('${c.id}')">🗑️ Löschen</button>
     </div>
   </div>`;
+}
+
+function normalizeUrl(url) {
+  if (!url) return '';
+  return /^https?:\/\//i.test(url) ? url : 'https://' + url;
 }
 
 function renderStars(rating) {
@@ -1438,6 +1449,7 @@ function openAddModal() {
   document.getElementById('inputLon').value = '';
   document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('inputLocation').value = '';
+  document.getElementById('inputWebsite').value = '';
   document.getElementById('inputNotes').value = '';
   const gpsEl = document.getElementById('gpsResult');
   gpsEl.style.display = 'none'; gpsEl.className = 'gps-result-ios';
@@ -1462,6 +1474,7 @@ function editCampsite(id) {
   document.getElementById('inputLon').value      = c.lon  || '';
   document.getElementById('inputDate').value     = c.date || '';
   document.getElementById('inputLocation').value = c.location || '';
+  document.getElementById('inputWebsite').value  = c.website  || '';
   document.getElementById('inputNotes').value    = c.notes    || '';
   const gpsEl = document.getElementById('gpsResult');
   gpsEl.style.display = 'none'; gpsEl.className = 'gps-result-ios';
@@ -1583,6 +1596,7 @@ function saveCampsite() {
     lon:       hasCoords ? lonVal : null,
     date:      document.getElementById('inputDate').value,
     location:  document.getElementById('inputLocation').value.trim(),
+    website:   document.getElementById('inputWebsite').value.trim(),
     ratings:   currentType==='visited' ? { ...currentRatings } : {},
     revisit:   currentType==='visited' ? currentRevisit   : false,
     workation: currentType==='visited' ? currentWorkation : false,
